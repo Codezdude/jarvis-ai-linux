@@ -1,0 +1,4 @@
+PowerShell
+ollama pull gemma4:12b
+
+ollama pull qwen3:8b

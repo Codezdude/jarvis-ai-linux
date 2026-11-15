@@ -1571,4 +1571,4 @@ def ask_local_brain_with_tools(query: str) -> str:
 
                 reply = response["message"]["content"]
                 reply = cognitive_review_loop(query, reply)
-                CONVERSATION_HISTORY.append({"role": "assistant", "content
+                CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})

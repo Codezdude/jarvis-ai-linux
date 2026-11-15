@@ -5,3 +5,4 @@ __pycache__/
 *.gguf
 *.bin
 *.tar.zst
+git_sync.log

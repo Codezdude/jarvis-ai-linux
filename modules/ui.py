@@ -531,10 +531,7 @@ class JarvisHUD:
                 cpu = psutil.cpu_percent(interval=None)
                 ram = psutil.virtual_memory().percent
                 self.canvas.create_text(
-                    55, 18, text=f"CPU: {cpu}%", fill=secondary, font=("Consolas", 9, "bold")
-                )
-                self.canvas.create_text(
-                    405, 18, text=f"RAM: {ram}%", fill=secondary, font=("Consolas", 9, "bold")
+                    46, 12, text=f"CPU:{cpu}% RAM:{ram}%", fill=secondary, font=("Consolas", 8, "bold")
                 )
 
         self.animate_rings()

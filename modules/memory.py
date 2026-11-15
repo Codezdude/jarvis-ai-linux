@@ -27,7 +27,7 @@ def clear_runtime_state():
 
 
 def init_db():
-    """Ensure the memory, conversation logs, and history tables exist."""
+    """Ensure the memory, conversation logs, history, and reflection tables exist."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -61,6 +61,19 @@ def init_db():
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
             query TEXT,
             response TEXT
+        )
+        """
+    )
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS reflections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            category TEXT,
+            query TEXT,
+            raw_response TEXT,
+            final_response TEXT,
+            critique TEXT
         )
         """
     )
@@ -177,6 +190,52 @@ def save_interaction(query: str, response: str):
         conn.close()
     except Exception as e:
         print(f"Database save error: {e}")
+
+
+def save_reflection(query: str, raw_response: str, final_response: str, critique: str = "", category: str = "general") -> str:
+    """Persist a reviewed interaction so JARVIS can learn from its own critique and final answer."""
+    try:
+        init_db()
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute(
+            "INSERT INTO reflections (timestamp, category, query, raw_response, final_response, critique) VALUES (?, ?, ?, ?, ?, ?)",
+            (timestamp, category, str(query or ""), str(raw_response or ""), str(final_response or ""), str(critique or "")),
+        )
+        conn.commit()
+        conn.close()
+        return "Reflection saved to local database."
+    except Exception as exc:
+        return f"Failed to save reflection: {exc}"
+
+
+def get_recent_reflections(limit: int = 20):
+    """Get the most recent reflections for learning and memory reuse."""
+    try:
+        init_db()
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT timestamp, category, query, raw_response, final_response, critique FROM reflections ORDER BY id DESC LIMIT ?",
+            (limit,),
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+    except Exception:
+        return []
+
+
+def recall_reflections(limit: int = 10):
+    """Compatibility wrapper that returns recent reflection entries as reusable memory rows."""
+    rows = get_recent_reflections(limit=limit)
+    normalized = []
+    for row in rows:
+        timestamp, category, query, raw_response, final_response, critique = row
+        summary = critique or final_response or raw_response or ""
+        normalized.append((timestamp, category, query, summary))
+    return normalized
 
 
 def recall(key: str) -> str:

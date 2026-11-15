@@ -31,10 +31,12 @@ from modules.automation import (
     experiment_review_bot,
     memory_cleanup_bot,
     quality_guard_bot,
+    publish_carousel_to_instagram,
     run_free_automation_bots,
 )
 from modules.memory import (
     get_memory_entry,
+    get_recent_reflections,
     get_runtime_state,
     recall_by_category,
     remember,
@@ -42,6 +44,7 @@ from modules.memory import (
     set_runtime_state,
 )
 from modules.learning import record_interaction, summarize_recent_logs, auto_learn_from_logs
+from modules.mind import cognitive_review_loop
 from modules.tools import (
     apply_self_improvement,
     browser_automation_task,
@@ -152,6 +155,7 @@ AVAILABLE_TOOLS = {
     "generate_image": generate_image,
     "web_fetch_and_learn": web_fetch_and_learn,
     "run_free_automation_bots": run_free_automation_bots,
+    "publish_carousel_to_instagram": publish_carousel_to_instagram,
     "memory_cleanup_bot": memory_cleanup_bot,
     "experiment_review_bot": experiment_review_bot,
     "quality_guard_bot": quality_guard_bot,
@@ -406,6 +410,36 @@ TOOL_SCHEMAS = [
                 "required": ["pack_input"],
             },
         },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "publish_carousel_to_instagram",
+            "description": "Publish a multi-slide carousel to an Instagram Professional account via Meta's official Graph API.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ig_user_id": {
+                        "type": "string",
+                        "description": "The Instagram Business or Creator Account ID"
+                    },
+                    "access_token": {
+                        "type": "string",
+                        "description": "Meta Graph API long-lived user access token"
+                    },
+                    "image_urls": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of public image URLs for the carousel slides (max 10)"
+                    },
+                    "caption": {
+                        "type": "string",
+                        "description": "The caption text for the post, including hashtags and call-to-action"
+                    }
+                },
+                "required": ["ig_user_id", "access_token", "image_urls"]
+            }
+        }
     },
     {
         "type": "function",
@@ -751,6 +785,12 @@ def get_relevant_memory_context(query: str) -> str:
     for value, _ in analytics_rows:
         if isinstance(value, str) and len(value) > 5:
             memory_lines.append("Analytics memory: " + value)
+
+    reflection_rows = get_recent_reflections(limit=5)
+    for _, category, query_text, raw_response, final_response, critique in reflection_rows:
+        summary = critique or final_response or raw_response or ""
+        if isinstance(summary, str) and len(summary.strip()) > 5:
+            memory_lines.append(f"Reflection memory ({category}): {query_text[:120]} -> {summary[:220]}")
 
     semantic_matches = []
     try:
@@ -1258,10 +1298,12 @@ def ask_local_brain_with_tools(query: str) -> str:
                             messages=CONVERSATION_HISTORY,
                         )
                         reply = final_response.choices[0].message.content
+                        reply = cognitive_review_loop(query, reply)
                         CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
                         return reply
 
                 reply = message.content
+                reply = cognitive_review_loop(query, reply)
                 CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
                 set_active_provider(provider)
                 return reply
@@ -1270,6 +1312,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                 print("[ROUTER] Attempting Cloudflare Workers AI...")
                 reply = call_cloudflare_workers_ai(CONVERSATION_HISTORY)
                 if reply:
+                    reply = cognitive_review_loop(query, reply)
                     CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
                     set_active_provider(provider)
                     return reply
@@ -1278,6 +1321,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                 print("[ROUTER] Attempting Kilo AI Gateway...")
                 reply = call_kilo_gateway(CONVERSATION_HISTORY)
                 if reply:
+                    reply = cognitive_review_loop(query, reply)
                     CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
                     set_active_provider(provider)
                     return reply
@@ -1286,6 +1330,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                 print("[ROUTER] Attempting Google Subscription (Antigravity CLI)...")
                 reply = call_antigravity_cli(CONVERSATION_HISTORY)
                 if reply:
+                    reply = cognitive_review_loop(query, reply)
                     CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
                     set_active_provider(provider)
                     return reply
@@ -1332,10 +1377,12 @@ def ask_local_brain_with_tools(query: str) -> str:
                             config=config,
                         )
                         reply = follow_up.text or str(tool_result)
+                        reply = cognitive_review_loop(query, reply)
                         CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
                         return reply
 
                 reply = response.text or "Completed, Sir."
+                reply = cognitive_review_loop(query, reply)
                 CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
                 set_active_provider(provider)
                 return reply
@@ -1364,10 +1411,12 @@ def ask_local_brain_with_tools(query: str) -> str:
 
                         final_response = ollama.chat(model=MODEL_NAME, messages=sanitize_fallback_messages(CONVERSATION_HISTORY))
                         reply = final_response["message"]["content"]
+                        reply = cognitive_review_loop(query, reply)
                         CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
                         return reply
 
                 reply = response["message"]["content"]
+                reply = cognitive_review_loop(query, reply)
                 CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
                 set_active_provider(provider)
                 return reply

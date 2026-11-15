@@ -481,6 +481,68 @@ def tech_ir_learning_bot() -> dict:
     return result
 
 
+def publish_carousel_to_instagram(
+    ig_user_id: str,
+    access_token: str,
+    image_urls: list[str] | tuple[str, ...] | None,
+    caption: str = "",
+) -> dict:
+    """Attempt a Meta Graph API carousel publish for an Instagram professional account."""
+    if not ig_user_id or not access_token:
+        return {
+            "status": "blocked",
+            "message": "Instagram publishing requires both an Instagram user ID and a Meta access token.",
+        }
+
+    slides = [str(url).strip() for url in (image_urls or []) if str(url).strip()]
+    if not slides:
+        return {
+            "status": "blocked",
+            "message": "At least one image URL is required before publishing a carousel.",
+        }
+
+    slides = slides[:10]
+    payload = {
+        "status": "manual-review",
+        "ig_user_id": ig_user_id,
+        "slides_count": len(slides),
+        "caption": caption or "",
+        "image_urls": slides,
+        "message": "This is a protected local workflow: the Meta Graph API call must be completed with a valid access token and approved app scope.",
+    }
+
+    try:
+        import requests
+    except ImportError:
+        return payload
+
+    try:
+        endpoint = f"https://graph.facebook.com/v20.0/{ig_user_id}/media"
+        response = requests.post(
+            endpoint,
+            data={
+                "access_token": access_token,
+                "caption": caption or "",
+                "media_type": "CAROUSEL",
+                "children": "|".join(slides),
+            },
+            timeout=20,
+        )
+        response.raise_for_status()
+        result = response.json()
+        return {
+            "status": "submitted",
+            "ig_user_id": ig_user_id,
+            "slides_count": len(slides),
+            "caption": caption or "",
+            "meta_response": result,
+        }
+    except Exception as exc:
+        payload["status"] = "manual-review"
+        payload["message"] = f"Meta API publish could not complete automatically: {exc}"
+        return payload
+
+
 def run_free_automation_bots() -> dict:
     """Run the free local bot suite so JARVIS can learn from reusable behaviors and project signals."""
     bots = [

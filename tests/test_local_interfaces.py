@@ -11,6 +11,7 @@ from modules.safe_storage import atomic_write_text, project_safe_path, read_text
 from modules.local_gateway import create_app, resolve_gateway_port
 from modules.ai import choose_provider_order, sanitize_fallback_messages
 from modules.automation import run_free_automation_bots, tech_ir_learning_bot
+from modules.memory import save_reflection
 from modules.tools import generate_image
 from modules.vector_memory import save_vector_memory, semantic_search
 from modules.workspace_growth import (
@@ -155,9 +156,16 @@ class LocalInterfaceTests(unittest.TestCase):
         self.assertTrue(any(item["content"].lower().find("brand") >= 0 for item in matches))
 
         from modules.ai import get_relevant_memory_context
+        save_reflection(
+            query="premium blue creator brand",
+            raw_response="generic brand ideas",
+            final_response="premium blue creator brand with calm luxury CTA and proof points",
+            critique="Need stronger CTA and clearer value prop.",
+            category="reflection",
+        )
         context = get_relevant_memory_context("premium blue creator brand")
         self.assertTrue(context)
-        self.assertTrue("Context for" in context or len(context) > 10)
+        self.assertTrue("Reflection memory" in context or len(context) > 10)
 
         from modules.memory import reindex_memory_pipeline
         result = reindex_memory_pipeline(force=False)

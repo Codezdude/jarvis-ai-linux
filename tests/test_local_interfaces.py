@@ -165,12 +165,47 @@ class LocalInterfaceTests(unittest.TestCase):
         )
         context = get_relevant_memory_context("premium blue creator brand")
         self.assertTrue(context)
-        self.assertTrue("Reflection memory" in context or len(context) > 10)
+        self.assertTrue("Learned preferences" in context or "Reflection memory" in context or len(context) > 10)
 
         from modules.memory import reindex_memory_pipeline
         result = reindex_memory_pipeline(force=False)
         self.assertIsInstance(result, dict)
         self.assertIn("semantic_reindexed", result)
+
+    def test_structured_preferences_object_created_from_conversation_summary(self):
+        from modules.ai import _build_conversation_summary, extract_structured_preferences
+        from modules.memory import get_memory_entry
+
+        # Test extraction logic
+        raw_facts = [
+            "I prefer concise, spoken responses with python and fastapi",
+            "Keep the design minimal, premium with gold and blue palette",
+            "Always preserve local project workspace boundaries",
+        ]
+        structured = extract_structured_preferences(raw_facts)
+        self.assertIn("communication", structured)
+        self.assertIn("technical", structured)
+        self.assertIn("design", structured)
+        self.assertIn("constraints", structured)
+        self.assertTrue(any("concise" in item for item in structured["communication"]))
+        self.assertIn("python", structured["technical"])
+
+        # Test building conversation summary creates structured guidance object
+        history = [
+            {"role": "user", "content": "I like python and prefer concise responses."},
+            {"role": "assistant", "content": "Understood, Sir."},
+            {"role": "user", "content": "We need premium minimal design with blue colors and safe local boundaries."},
+        ]
+        summary = _build_conversation_summary(history)
+        self.assertIn("Learned User Preferences", summary)
+
+        # Verify structured JSON object was persisted
+        persisted_raw = get_memory_entry("conversation_preferences", "")
+        self.assertTrue(persisted_raw)
+        persisted_obj = json.loads(persisted_raw)
+        self.assertIn("guidance", persisted_obj)
+        self.assertIn("recent_facts", persisted_obj)
+        self.assertTrue(persisted_obj["guidance"].get("technical"))
 
 
 if __name__ == "__main__":

@@ -238,6 +238,93 @@ def recall_reflections(limit: int = 10):
     return normalized
 
 
+def summarize_recent_reflections(limit: int = 10) -> str:
+    """Turn the latest reflections into a structured learned guidance object and summary for future memory context."""
+    rows = get_recent_reflections(limit=limit)
+    if not rows:
+        return ""
+
+    learned_points = []
+    seen = set()
+    for _, category, query_text, raw_response, final_response, critique in rows:
+        summary = (critique or final_response or raw_response or "").strip()
+        if not summary:
+            continue
+        clean = " ".join(summary.split())
+        if len(clean) < 12:
+            continue
+        normalized = clean.lower()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        learned_points.append(clean[:220])
+
+    if not learned_points:
+        return ""
+
+    # Generate structured guidance from reflections
+    structured_guidance = build_learned_preferences_from_reflections(limit=limit)
+    
+    # Store structured guidance object
+    reflection_obj = {
+        "guidance": structured_guidance,
+        "key_takeaways": learned_points[:5],
+        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    remember("profile", "reflection_preferences", json.dumps(reflection_obj, ensure_ascii=False))
+
+    # Format actionable summary text
+    guidance_parts = [f"{k}: {', '.join(v)}" for k, v in structured_guidance.items() if v and isinstance(v, list)]
+    guidance_str = " | ".join(guidance_parts) if guidance_parts else "; ".join(learned_points[:5])
+    summary = f"Learned Reflection Guidance: [{guidance_str}]"
+    remember("profile", "reflection_summary", summary)
+    return summary
+
+
+def build_learned_preferences_from_reflections(limit: int = 10) -> dict:
+    """Convert recent reflections into structured learning preferences that can guide future answers."""
+    rows = get_recent_reflections(limit=limit)
+    preferences = {
+        "tone": [],
+        "formats": [],
+        "content_goals": [],
+        "signals": [],
+    }
+
+    for _, category, query_text, raw_response, final_response, critique in rows:
+        combined = " ".join(part for part in [query_text, raw_response, final_response, critique] if part)
+        text = (combined or "").lower()
+
+        if any(word in text for word in ["premium", "luxury", "professional", "executive", "clean"]):
+            preferences["tone"].append("premium professional")
+        if any(word in text for word in ["calm", "minimal", "simple", "elegant"]):
+            preferences["tone"].append("calm minimal")
+        if any(word in text for word in ["carousel", "slides", "storyboard"]):
+            preferences["formats"].append("carousel")
+        if any(word in text for word in ["cta", "call to action", "value prop", "hook"]):
+            preferences["content_goals"].append("strong CTA and clearer value prop")
+        if any(word in text for word in ["actionable", "proof", "metrics", "results"]):
+            preferences["signals"].append("ground recommendations in evidence")
+
+    cleaned = {}
+    for key, values in preferences.items():
+        unique = sorted(set(v.strip().lower() for v in values if v and str(v).strip()))
+        if unique:
+            cleaned[key] = unique[:5]
+    if not cleaned:
+        cleaned = {"note": ["keep answers practical and concise"]}
+
+    remember("profile", "learned_preferences", json.dumps(cleaned, ensure_ascii=False))
+    return cleaned
+
+
+def save_learned_preferences(preferences: dict) -> dict:
+    """Persist structured learned preferences into the memory database."""
+    normalized = preferences or {}
+    remember("profile", "learned_preferences", json.dumps(normalized, ensure_ascii=False))
+    return normalized
+
+
 def recall(key: str) -> str:
     """Look up a memory by its exact key."""
     conn = sqlite3.connect(DB_PATH)

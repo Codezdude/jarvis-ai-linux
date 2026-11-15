@@ -684,8 +684,98 @@ def _clean_message_text(message: dict) -> str:
     return str(content).strip()
 
 
+def extract_structured_preferences(text: str | list[str]) -> dict:
+    """Turn unstructured user facts or summary points into an actionable learned preferences object.
+    
+    Structure:
+      - communication: guidance on output style (concise, direct, conversational, etc.)
+      - technical: languages, frameworks, environments, tools (python, fastapi, etc.)
+      - design: visual styling, palette, tone (premium, minimal, colors)
+      - goals: priorities, business / workflow objectives
+      - constraints: rules, things to avoid or respect
+      - explicit: raw actionable preference snippets
+    """
+    if isinstance(text, list):
+        combined = " ".join(str(item).strip() for item in text if item)
+    else:
+        combined = str(text or "").strip()
+
+    if not combined:
+        return {}
+
+    lower = combined.lower()
+    prefs = {
+        "communication": [],
+        "technical": [],
+        "design": [],
+        "goals": [],
+        "constraints": [],
+        "explicit": [],
+    }
+
+    # 1. Communication style detection
+    if any(k in lower for k in ["concise", "brief", "short", "bullet", "bullet point"]):
+        prefs["communication"].append("concise and direct answers")
+    if any(k in lower for k in ["spoken", "voice", "audio", "natural", "conversational"]):
+        prefs["communication"].append("natural spoken pacing")
+    if any(k in lower for k in ["detailed", "thorough", "in-depth", "step-by-step", "explain"]):
+        prefs["communication"].append("structured step-by-step detail")
+    if any(k in lower for k in ["sir", "formal"]):
+        prefs["communication"].append("address user respectfully as Sir")
+
+    # 2. Technical preferences
+    tech_patterns = [
+        "python", "javascript", "typescript", "fastapi", "react", "sqlite",
+        "customtkinter", "docker", "git", "ollama", "groq", "gemini"
+    ]
+    for tech in tech_patterns:
+        if re.search(rf"\b{tech}\b", lower):
+            prefs["technical"].append(tech)
+
+    # 3. Design & visual style
+    styles = ["premium", "luxury", "minimal", "clean", "modern", "bold", "calm", "elegant"]
+    found_styles = [s for s in styles if re.search(rf"\b{s}\b", lower)]
+    if found_styles:
+        prefs["design"].append(f"style: {', '.join(found_styles)}")
+
+    colors = ["blue", "gold", "cyan", "green", "red", "black", "white", "purple"]
+    found_colors = [c for c in colors if re.search(rf"\b{c}\b", lower)]
+    if found_colors:
+        prefs["design"].append(f"palette: {', '.join(found_colors)}")
+
+    # 4. Goals & workflow targets
+    if any(k in lower for k in ["growth", "learn", "self-improve", "evolve", "autonomous"]):
+        prefs["goals"].append("autonomous self-learning and self-improvement")
+    if any(k in lower for k in ["automate", "automation", "scheduled", "background"]):
+        prefs["goals"].append("workflow automation and background tasks")
+    if any(k in lower for k in ["marketing", "social media", "brand", "campaign"]):
+        prefs["goals"].append("brand development and high-converting marketing")
+
+    # 5. Constraints
+    if any(k in lower for k in ["safe", "safety", "local-only", "workspace-only", "project-scoped", "workspace", "boundaries", "boundary"]):
+        prefs["constraints"].append("preserve local project workspace boundaries")
+    if any(k in lower for k in ["no fluff", "straight to the point", "don't ask"]):
+        prefs["constraints"].append("avoid conversational filler")
+
+    # 6. Explicit preference extraction
+    matches = re.findall(r"(?:prefer|like|love|want|need|always|never)\s+(?:to\s+)?([^.;!?]+)", combined, re.IGNORECASE)
+    for m in matches:
+        clean = " ".join(m.strip().split())
+        if 4 < len(clean) < 80:
+            prefs["explicit"].append(clean.lower())
+
+    # Prune empty keys and deduplicate
+    structured = {}
+    for key, items in prefs.items():
+        deduped = sorted(set(items))
+        if deduped:
+            structured[key] = deduped
+
+    return structured
+
+
 def extract_user_preferences_from_message(message: str) -> dict:
-    """Extract important user preferences from natural-language requests."""
+    """Extract important user preferences from natural-language requests into structured guidance."""
     text = (message or "").strip()
     if not text:
         return {}
@@ -715,6 +805,11 @@ def extract_user_preferences_from_message(message: str) -> dict:
 
     if re.search(r"\b(branding|logo|caption|landing page|social media|website|design|product)\b", lower):
         preferences["interest_area"] = "creative design"
+
+    # Merge in structured guidance dimensions
+    guidance = extract_structured_preferences(text)
+    if guidance:
+        preferences["structured_guidance"] = guidance
 
     return preferences
 
@@ -774,6 +869,35 @@ def get_relevant_memory_context(query: str) -> str:
             profile = json.loads(profile_raw)
             if profile:
                 memory_lines.append("User profile: " + "; ".join(f"{k}={v}" for k, v in profile.items()))
+        except Exception:
+            pass
+
+    learned_preferences_raw = get_memory_entry("learned_preferences", "")
+    if learned_preferences_raw:
+        try:
+            preferences = json.loads(learned_preferences_raw)
+            if preferences:
+                memory_lines.append("Learned preferences: " + json.dumps(preferences, ensure_ascii=False))
+        except Exception:
+            pass
+    else:
+        try:
+            from modules.memory import build_learned_preferences_from_reflections
+            prefs = build_learned_preferences_from_reflections(limit=8)
+            if prefs:
+                memory_lines.append("Learned preferences: " + json.dumps(prefs, ensure_ascii=False))
+        except Exception:
+            pass
+
+    reflection_summary = get_memory_entry("reflection_summary", "")
+    if reflection_summary:
+        memory_lines.append("Reflection summary: " + reflection_summary)
+    else:
+        try:
+            from modules.memory import summarize_recent_reflections
+            generated = summarize_recent_reflections(limit=8)
+            if generated:
+                memory_lines.append("Reflection summary: " + generated)
         except Exception:
             pass
 
@@ -921,7 +1045,7 @@ AVAILABLE_TOOLS["learn_from_analytics"] = learn_from_analytics
 
 
 def _build_conversation_summary(history: list[dict]) -> str:
-    """Create a short compatibility summary of recent user facts so communication remains coherent over long chats."""
+    """Create a structured learned preferences guidance object and summary of recent user facts."""
     user_facts = []
     for message in history:
         if not isinstance(message, dict):
@@ -936,11 +1060,56 @@ def _build_conversation_summary(history: list[dict]) -> str:
     saved_summary = get_memory_entry("conversation_summary", "")
     if user_facts:
         recent_facts = user_facts[-4:]
-        summary = "User context: " + "; ".join(recent_facts)
+        structured_prefs = extract_structured_preferences(recent_facts)
+        
+        # Build structured preferences object
+        prefs_payload = {
+            "recent_facts": recent_facts,
+            "guidance": structured_prefs,
+            "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        
+        # Persist structured object
+        remember("profile", "conversation_preferences", json.dumps(prefs_payload, ensure_ascii=False))
+        
+        # Also update learned_preferences store for deep system recall
+        if structured_prefs:
+            existing_learned_raw = get_memory_entry("learned_preferences", "")
+            merged_learned = {}
+            if existing_learned_raw:
+                try:
+                    merged_learned = json.loads(existing_learned_raw)
+                except Exception:
+                    merged_learned = {}
+            for k, vals in structured_prefs.items():
+                current_vals = merged_learned.get(k, [])
+                if isinstance(current_vals, list):
+                    merged_learned[k] = sorted(set(current_vals + vals))[:6]
+                else:
+                    merged_learned[k] = vals
+            remember("profile", "learned_preferences", json.dumps(merged_learned, ensure_ascii=False))
+
+        # Format clean, structured text guidance for system context injection
+        guidance_sections = []
+        if structured_prefs.get("communication"):
+            guidance_sections.append(f"Tone/Pacing: {', '.join(structured_prefs['communication'])}")
+        if structured_prefs.get("technical"):
+            guidance_sections.append(f"Tech: {', '.join(structured_prefs['technical'])}")
+        if structured_prefs.get("design"):
+            guidance_sections.append(f"Design: {', '.join(structured_prefs['design'])}")
+        if structured_prefs.get("goals"):
+            guidance_sections.append(f"Goals: {', '.join(structured_prefs['goals'])}")
+        if structured_prefs.get("constraints"):
+            guidance_sections.append(f"Rules: {', '.join(structured_prefs['constraints'])}")
+        if structured_prefs.get("explicit"):
+            guidance_sections.append(f"Directives: {', '.join(structured_prefs['explicit'][:3])}")
+
+        guidance_text = " | ".join(guidance_sections) if guidance_sections else "; ".join(recent_facts)
+        summary = f"Learned User Preferences: [{guidance_text}]"
         remember("profile", "conversation_summary", summary)
         return summary
 
-    return saved_summary or "No prior user preferences captured yet."
+    return saved_summary or "Learned User Preferences: [status: active]"
 
 
 def trim_and_summarize_conversation(history: list[dict]) -> list[dict]:

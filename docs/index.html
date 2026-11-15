@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JARVIS | Autonomous AI Operating System</title>
+  <meta name="description" content="JARVIS is a local-first autonomous AI assistant for research, memory, project work, content strategy, and safe execution." />
+  <style>
+    :root {
+      --bg: #050b16;
+      --bg-2: #0b1628;
+      --panel: rgba(10, 18, 31, 0.84);
+      --panel-strong: rgba(13, 23, 38, 0.98);
+      --card: rgba(12, 22, 37, 0.86);
+      --line: rgba(146, 182, 215, 0.18);
+      --text: #ecf6ff;
+      --muted: #b6c7da;
+      --primary: #7ad5ff;
+      --secondary: #8df0ca;
+      --accent: #ffc96b;
+      --glow: rgba(122, 213, 255, 0.28);
+      --shadow: 0 22px 60px rgba(2, 7, 16, 0.58);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(122, 213, 255, 0.2), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(141, 240, 202, 0.12), transparent 18%),
+        linear-gradient(140deg, var(--bg), var(--bg-2));
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+    .container {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      backdrop-filter: blur(18px);
+      background: rgba(5, 11, 22, 0.75);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 74px;
+      gap: 20px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+    }
+
+    .logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: #06131d;
+      font-weight: 900;
+      box-shadow: 0 10px 24px var(--glow);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 12px 22px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.02);
+      color: var(--text);
+    }
+
+    .button.primary {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border: none;
+      color: #06131d;
+      box-shadow: 0 18px 32px rgba(122, 213, 255, 0.2);
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+    }
+
+    .hero {
+      padding: 74px 0 40px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(122, 213, 255, 0.08);
+      border: 1px solid rgba(122, 213, 255, 0.18);
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-size: 0.74rem;
+      font-weight: 700;
+      margin-bottom: 18px;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 16px;
+      line-height: 1.05;
+    }
+
+    h1 {
+      font-size: clamp(3rem, 6vw, 5.4rem);
+      letter-spacing: -0.07em;
+    }
+
+    h2 {
+      font-size: clamp(2rem, 3vw, 3rem);
+      letter-spacing: -0.05em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 1.08rem;
+      max-width: 60ch;
+      margin-bottom: 26px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+
+    .mini-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      color: var(--muted);
+    }
+
+    .mini-stats div {
+      min-width: 135px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 14px;
+    }
+
+    .mini-stats strong {
+      display: block;
+      font-size: 1.22rem;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+
+    .hero-panel {
+      position: relative;
+      background: linear-gradient(180deg, rgba(14, 25, 38, 0.95), rgba(7, 13, 22, 0.92));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero-panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(122, 213, 255, 0.08), transparent 35%, rgba(141, 240, 202, 0.04));
+      pointer-events: none;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      position: relative;
+      z-index: 1;
+    }
+
+    .dots {
+      display: flex;
+      gap: 8px;
+    }
+
+    .dots span {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dots span:nth-child(1) { background: #ff5f57; }
+    .dots span:nth-child(2) { background: #febc2e; }
+    .dots span:nth-child(3) { background: #28c840; }
+
+    .panel-body {
+      position: relative;
+      z-index: 1;
+      padding: 24px 22px 20px;
+    }
+
+    .scanline {
+      border-radius: 16px;
+      padding: 18px;
+      border: 1px solid rgba(122, 213, 255, 0.16);
+      background: linear-gradient(180deg, rgba(122, 213, 255, 0.06), rgba(122, 213, 255, 0.02));
+      color: var(--secondary);
+      font-family: "Consolas", monospace;
+      font-size: 0.92rem;
+      line-height: 1.8;
+      white-space: pre-wrap;
+    }
+
+    .section {
+      padding: 42px 0;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-bottom: 22px;
+    }
+
+    .section-head p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 64ch;
+    }
+
+    .label {
+      display: inline-block;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: var(--secondary);
+      margin-bottom: 10px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .card ul {
+      padding-left: 18px;
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .feature-stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .stack-item {
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--line);
+    }
+
+    .stack-item strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1.04rem;
+    }
+
+    .stack-item p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .timeline {
+      display: grid;
+      gap: 18px;
+    }
+
+    .timeline-item {
+      position: relative;
+      padding-left: 26px;
+      border-left: 2px solid rgba(122, 213, 255, 0.3);
+      padding-bottom: 8px;
+    }
+
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: -7px;
+      top: 4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 0 4px rgba(122, 213, 255, 0.12);
+    }
+
+    .timeline-item strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,0.02);
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      background: rgba(122, 213, 255, 0.08);
+      color: var(--primary);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.74rem;
+    }
+
+    td {
+      color: var(--muted);
+    }
+
+    .callout {
+      margin-top: 24px;
+      border-left: 4px solid var(--accent);
+      background: rgba(255, 201, 107, 0.08);
+      border-radius: 16px;
+      padding: 18px 20px;
+      color: var(--text);
+    }
+
+    .examples {
+      display: grid;
+      gap: 18px;
+    }
+
+    .example {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .example h3 {
+      margin-bottom: 8px;
+    }
+
+    .example p {
+      margin: 0 0 12px;
+      color: var(--muted);
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(8, 15, 25, 0.94);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px;
+      color: var(--secondary);
+      font-family: "Consolas", monospace;
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+
+    .footer {
+      padding: 26px 0 58px;
+      color: var(--muted);
+      text-align: center;
+      border-top: 1px solid var(--line);
+      margin-top: 30px;
+    }
+
+    @media (max-width: 900px) {
+      .hero-grid,
+      .cards,
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .nav {
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 16px 0;
+      }
+
+      .nav-links {
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container nav">
+      <div class="brand">
+        <div class="logo">J</div>
+        <span>J.A.R.V.I.S.</span>
+      </div>
+
+      <nav class="nav-links">
+        <a href="#overview">Overview</a>
+        <a href="#functions">Functions</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="#safety">Safety</a>
+        <a href="#examples">Examples</a>
+        <a href="#improvements">Improvements</a>
+      </nav>
+
+      <a class="button primary" href="#examples">Start using it</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <div class="eyebrow">Autonomous AI assistant</div>
+          <h1>JARVIS</h1>
+          <p class="subtitle">
+            A local-first AI operating system for research, memory, project work, content strategy, and safe execution. It can think, learn, inspect, create, and act within explicit guardrails instead of blindly running everything.
+          </p>
+
+          <div class="hero-actions">
+            <a href="#overview" class="button primary">Explore the system</a>
+            <a href="#functions" class="button">See what it can do</a>
+          </div>
+
+          <div class="mini-stats">
+            <div><strong>Safe</strong> approval gates</div>
+            <div><strong>Memory</strong> persistent recall</div>
+            <div><strong>Agents</strong> tool-based workflow</div>
+          </div>
+        </div>
+
+        <div class="hero-panel">
+          <div class="panel-header">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span style="color: var(--muted);">live-system</span>
+          </div>
+          <div class="panel-body">
+            <div class="scanline">[JARVIS] Initializing project context...
+[AI] Provider routing active
+[Memory] User preferences loaded
+[Tools] File, web, automation, and review modules ready
+[Safety] Browser and publishing actions gated</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="overview" class="section">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <div class="label">Overview</div>
+            <h2>What this project actually is</h2>
+          </div>
+          <p>
+            JARVIS is a hybrid assistant built around project knowledge, dynamic memory, tool calling, and controlled action. It is not just a chat interface. It is a system that can think, remember, inspect, plan, and execute only when allowed.
+          </p>
+        </div>
+
+        <div class="cards">
+          <div class="card">
+            <div class="label">Core idea</div>
+            <ul>
+              <li>Local-first AI with cloud fallback</li>
+              <li>Memory-driven continuity across sessions</li>
+              <li>Project-aware automation and tooling</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="label">Main value</div>
+            <ul>
+              <li>Research current information quickly</li>
+              <li>Support coding, debugging, and planning</li>
+              <li>Generate content and strategic ideas</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="label">Control model</div>
+            <ul>
+              <li>Human review for sensitive tasks</li>
+              <li>Explicit approval gates</li>
+              <li>Safe mode to avoid destructive mistakes</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="functions" class="section">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <div class="label">Functions</div>
+            <h2>What JARVIS can do right now</h2>
+          </div>
+        </div>
+
+        <div class="feature-grid">
+          <div class="feature-stack">
+            <div class="stack-item">
+              <strong>Research and web search</strong>
+              <p>Search the live web, gather current information, and summarize findings with source-aware context.</p>
+            </div>
+            <div class="stack-item">
+              <strong>Memory and personalization</strong>
+              <p>Save preferences, topic memory, and long-term context so the assistant adapts over time.</p>
+            </div>
+            <div class="stack-item">
+              <strong>Project file work</strong>
+              <p>Read, inspect, validate, and edit files inside a controlled, project-scoped environment.</p>
+            </div>
+            <div class="stack-item">
+              <strong>Brand and content generation</strong>
+              <p>Generate campaign concepts, social briefs, product ideas, and design directions with audience awareness.</p>
+            </div>
+          </div>
+
+          <div class="feature-stack">
+            <div class="stack-item">
+              <strong>Browser automation</strong>
+              <p>Open and inspect approved websites under safe conditions with explicit confirmation.</p>
+            </div>
+            <div class="stack-item">
+              <strong>Analytics learning loop</strong>
+              <p>Track metrics like reach, likes, saves, shares, and engagement so future creative decisions improve.</p>
+            </div>
+            <div class="stack-item">
+              <strong>Code validation</strong>
+              <p>Check Python syntax and run tests to reduce risk before changes are kept and reused.</p>
+            </div>
+            <div class="stack-item">
+              <strong>Voice + HUD experience</strong>
+              <p>Drive a desktop assistant with dynamic status, task flow, and lightweight UI controls.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="roadmap" class="section">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <div class="label">Roadmap</div>
+            <h2>Where JARVIS is now and where it is heading</h2>
+          </div>
+        </div>
+
+        <div class="timeline">
+          <div class="timeline-item">
+            <strong>Current stage</strong>
+            <span>Local AI system with memory, safe automation, web research, and content planning workflows.</span>
+          </div>
+          <div class="timeline-item">
+            <strong>Next stage</strong>
+            <span>Connect publishing flows, deepen analytics feedback, and strengthen learning from real user behavior.</span>
+          </div>
+          <div class="timeline-item">
+            <strong>Production stage</strong>
+            <span>Improved reviews, observability, controlled autonomy, and a tighter feedback loop between execution and reflection.</span>
+          </div>
+          <div class="timeline-item">
+            <strong>Long-term goal</strong>
+            <span>A dependable project partner that learns habits, improves decisions, and supports execution without losing human control.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="safety" class="section">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <div class="label">Safety</div>
+            <h2>What to know before giving it power</h2>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Area</th>
+                <th>Risk</th>
+                <th>Protection</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>File system access</td>
+                <td>Unwanted writes or accidental damage</td>
+                <td>Project-scoped paths and confirmation gates</td>
+              </tr>
+              <tr>
+                <td>Browser automation</td>
+                <td>Unsafe or irrelevant website access</td>
+                <td>Allowlist and explicit approval</td>
+              </tr>
+              <tr>
+                <td>Publishing</td>
+                <td>Accidental posting or scheduled publication</td>
+                <td>Approval-only workflow</td>
+              </tr>
+              <tr>
+                <td>Long-term memory</td>
+                <td>Noisy context that influences future answers</td>
+                <td>Structured memory and topic tracking</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout">
+          <strong>Important:</strong> JARVIS is strongest when it is useful and safe. The right model is not maximum autonomy; it is controlled usefulness with thoughtful oversight.
+        </div>
+      </div>
+    </section>
+
+    <section id="examples" class="section">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <div class="label">Examples</div>
+            <h2>Prompts that work well</h2>
+          </div>
+        </div>
+
+        <div class="examples">
+          <div class="example">
+            <h3>Research example</h3>
+            <p>Prompt:</p>
+            <pre>Research the latest AI workflow trends for small businesses and summarize the top 3 opportunities and risks.</pre>
+          </div>
+
+          <div class="example">
+            <h3>Code debugging example</h3>
+            <p>Prompt:</p>
+            <pre>Review this Python file and fix the syntax or logic bug without breaking the rest of the project.</pre>
+          </div>
+
+          <div class="example">
+            <h3>Branding example</h3>
+            <p>Prompt:</p>
+            <pre>Create a premium blue identity for a luxury skincare brand targeting women aged 25-45.</pre>
+          </div>
+
+          <div class="example">
+            <h3>Memory example</h3>
+            <p>Prompt:</p>
+            <pre>Remember that I prefer calm blue branding, premium design, and minimal but elegant layouts.</pre>
+          </div>
+
+          <div class="example">
+            <h3>Analytics example</h3>
+            <p>Prompt:</p>
+            <pre>Use my last campaign analytics and tell me what content style worked best and what to test next.</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="improvements" class="section">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <div class="label">Improvements</div>
+            <h2>What should be improved next</h2>
+          </div>
+        </div>
+
+        <div class="cards">
+          <div class="card">
+            <div class="label">Better memory quality</div>
+            <ul>
+              <li>Structured topic profiles</li>
+              <li>Clear preference separation</li>
+              <li>Compact, interpretable learning loops</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="label">Smarter automation</div>
+            <ul>
+              <li>More explicit approvals for each action</li>
+              <li>Better safe allowlists</li>
+              <li>Clean action history and logs</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="label">Analytics feedback</div>
+            <ul>
+              <li>Store campaign performance in memory</li>
+              <li>Recommend strategies from previous results</li>
+              <li>Track recurring patterns across launches</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      JARVIS project guide • designed for clarity, safety, learning, and practical productivity.
+    </div>
+  </footer>
+</body>
+</html>

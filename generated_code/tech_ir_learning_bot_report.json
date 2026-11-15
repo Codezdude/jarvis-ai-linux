@@ -1,0 +1,19 @@
+{
+  "bot": "tech_ir_learning_bot",
+  "status": "ok",
+  "summary": "Public technical references were reviewed for automation, image-generation, and local tooling learnings.",
+  "sources": [
+    {
+      "source": "https://www.python.org/",
+      "summary": "Source reachable but no content was captured in this environment."
+    },
+    {
+      "source": "https://pypi.org/project/Pillow/",
+      "summary": "Source reachable but no content was captured in this environment."
+    },
+    {
+      "source": "https://playwright.dev/",
+      "summary": "Source reachable but no content was captured in this environment."
+    }
+  ]
+}

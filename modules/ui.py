@@ -1,0 +1,540 @@
+import math
+import queue
+import time
+import customtkinter as ctk
+import psutil
+from modules.ai import ask_local_brain, get_active_provider, set_preferred_provider
+from modules.logger import log_error, log_info
+from modules.voice import speak, set_voice_enabled, get_voice_enabled
+from modules.memory import (
+    get_preference,
+    get_recent_history,
+    get_runtime_state,
+    init_db,
+    save_interaction,
+    save_preference,
+    set_runtime_state,
+)
+
+# Configure global theme styling
+ctk.set_appearance_mode("Dark")
+ctk.set_default_color_theme("blue")
+
+
+class JarvisHUD:
+    def __init__(self, root: ctk.CTk):
+        self.root = root
+        self.visible = bool(get_runtime_state("visible", True))
+        self.state = str(get_runtime_state("ui_state", "idle"))
+        self.angle = 0
+        self.ui_queue = queue.Queue()
+        self._last_telemetry_update = 0.0
+        self._animation_job = None
+        self._queue_job = None
+
+        # Initialize database memory
+        init_db()
+
+        # Customization state variables
+        self.current_opacity = float(get_preference("opacity", get_runtime_state("opacity", 0.92)))
+        self.show_telemetry = str(get_preference("telemetry_visible", get_runtime_state("show_telemetry", "true"))).lower() == "true"
+        self.voice_enabled = str(get_preference("voice_enabled", str(get_voice_enabled()).lower())).lower() == "true"
+        set_voice_enabled(self.voice_enabled)
+        self.settings_visible = bool(get_runtime_state("settings_visible", False))
+        self.history_visible = bool(get_runtime_state("history_visible", False))
+        self.fullscreen_mode = str(get_preference("fullscreen_mode", get_runtime_state("fullscreen_mode", "false"))).lower() == "true"
+        self.preferred_provider = str(get_preference("preferred_provider", get_runtime_state("preferred_provider", "auto")))
+        if self.preferred_provider.lower() in {"auto", "automatic", "default", "none", ""}:
+            self.preferred_provider = "auto"
+            set_preferred_provider(None)
+        else:
+            set_preferred_provider(self.preferred_provider)
+        self._normal_geometry = None
+        set_runtime_state("voice_enabled", self.voice_enabled)
+        set_runtime_state("show_telemetry", self.show_telemetry)
+        set_runtime_state("fullscreen_mode", self.fullscreen_mode)
+        set_runtime_state("ui_state", self.state)
+        set_runtime_state("visible", self.visible)
+        set_runtime_state("preferred_provider", self.preferred_provider)
+
+        # Window Setup (floating shell)
+        self.root.overrideredirect(True)
+        self.root.attributes("-topmost", True)
+        self.root.attributes("-alpha", self.current_opacity)
+
+        width, height = 560, 650
+        screen_w = self.root.winfo_screenwidth()
+        x_pos = screen_w - width - 40
+        y_pos = 36
+        self.root.geometry(f"{width}x{height}+{x_pos}+{y_pos}")
+        self.root.configure(fg_color="#07131d")
+
+        self.root.bind("<Escape>", lambda event: self.hide_hud())
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_rowconfigure(1, weight=1)
+
+        # Header
+        header = ctk.CTkFrame(self.root, fg_color="#0d1d2a", corner_radius=14, height=42)
+        header.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 8))
+        header.bind("<ButtonPress-1>", self.start_move)
+        header.bind("<B1-Motion>", self.do_move)
+
+        title_lbl = ctk.CTkLabel(
+            header, text="JARVIS // QUANTUM CORE",
+            text_color="#dbeeff", font=("Segoe UI", 12, "bold")
+        )
+        title_lbl.pack(side="left", padx=14, pady=8)
+        title_lbl.bind("<ButtonPress-1>", self.start_move)
+        title_lbl.bind("<B1-Motion>", self.do_move)
+
+        actions = ctk.CTkFrame(header, fg_color="transparent")
+        actions.pack(side="right", padx=(0, 10), pady=7)
+
+        self.settings_btn = ctk.CTkButton(
+            actions, text="\u2699", width=30, height=28, fg_color="transparent",
+            text_color="#9ed5ff", hover_color="#183047", font=("Segoe UI", 11, "bold"),
+            command=self.toggle_settings_panel
+        )
+        self.settings_btn.pack(side="right", padx=(0, 6))
+
+        history_btn = ctk.CTkButton(
+            actions, text="\u25eb", width=30, height=28, fg_color="transparent",
+            text_color="#9ef0c4", hover_color="#173b2f", font=("Segoe UI", 11, "bold"),
+            command=self.toggle_history_panel
+        )
+        history_btn.pack(side="right", padx=(0, 6))
+
+        hide_btn = ctk.CTkButton(
+            actions, text="\u2014", width=30, height=28, fg_color="transparent",
+            text_color="#dbeeff", hover_color="#1a2d3d", font=("Segoe UI", 11, "bold"),
+            command=self.hide_hud
+        )
+        hide_btn.pack(side="right", padx=(0, 6))
+
+        close_btn = ctk.CTkButton(
+            actions, text="\u2715", width=30, height=28, fg_color="transparent",
+            text_color="#ff9d9d", hover_color="#341d1d", font=("Segoe UI", 11, "bold"),
+            command=self.root.quit
+        )
+        close_btn.pack(side="right")
+
+        # Core panel
+        self.body = ctk.CTkFrame(self.root, fg_color="transparent")
+        self.body.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 12))
+        self.body.grid_columnconfigure(1, weight=1)
+        self.body.grid_rowconfigure(0, weight=1)
+
+        self.canvas = ctk.CTkCanvas(self.body, width=92, height=92, bg="#07131d", highlightthickness=0)
+        self.canvas.grid(row=0, column=0, sticky="n", padx=(0, 10), pady=(0, 8))
+        self.canvas.bind("<ButtonPress-1>", self.start_move)
+        self.canvas.bind("<B1-Motion>", self.do_move)
+
+        main_panel = ctk.CTkFrame(
+            self.body, fg_color="#0d1d2a", corner_radius=18,
+            border_width=1, border_color="#1f3350"
+        )
+        main_panel.grid(row=0, column=1, sticky="nsew")
+        main_panel.grid_columnconfigure(0, weight=1)
+        main_panel.grid_rowconfigure(2, weight=1)
+
+        self.status_var = ctk.StringVar(value="SYSTEMS ONLINE")
+        self.status_label = ctk.CTkLabel(
+            main_panel, textvariable=self.status_var, text_color="#92d2ff",
+            font=("Segoe UI", 10, "bold")
+        )
+        self.status_label.grid(row=0, column=0, sticky="w", padx=14, pady=(12, 4))
+
+        self.provider_status_var = ctk.StringVar(value="Provider: AUTO")
+        self.provider_status_label = ctk.CTkLabel(
+            main_panel, textvariable=self.provider_status_var, text_color="#9ef0c4",
+            font=("Segoe UI", 9)
+        )
+        self.provider_status_label.grid(row=1, column=0, sticky="w", padx=14, pady=(0, 8))
+
+        self.response_box = ctk.CTkTextbox(
+            main_panel, fg_color="#071018", text_color="#deefff",
+            font=("Segoe UI", 10), corner_radius=12, border_spacing=12,
+            border_width=1, border_color="#18324e", activate_scrollbars=True
+        )
+        self.response_box.insert("0.0", "Quantum core online. Systems initialized. Awaiting request...")
+        self.response_box.configure(state="disabled")
+        self.response_box.grid(row=2, column=0, sticky="nsew", padx=12, pady=(0, 12))
+
+        input_frame = ctk.CTkFrame(main_panel, fg_color="transparent")
+        input_frame.grid(row=3, column=0, sticky="ew", padx=12, pady=(0, 12))
+        input_frame.grid_columnconfigure(0, weight=1)
+
+        self.cmd_entry = ctk.CTkEntry(
+            input_frame, fg_color="#071018", text_color="#deefff",
+            placeholder_text="Ask JARVIS something...", placeholder_text_color="#67839a",
+            font=("Segoe UI", 10), border_width=1, border_color="#214b6b", height=38, corner_radius=10
+        )
+        self.cmd_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        self.cmd_entry.bind("<Return>", self.on_submit_text)
+
+        send_btn = ctk.CTkButton(
+            input_frame, text="RUN", width=70, height=38,
+            fg_color="#8dd4ff", text_color="#07131d", hover_color="#b0e5ff",
+            font=("Segoe UI", 10, "bold"), corner_radius=10, command=self.on_submit_text
+        )
+        send_btn.grid(row=0, column=1, padx=(0, 6))
+
+        mic_btn = ctk.CTkButton(
+            input_frame, text="\U0001f3a4", width=44, height=38,
+            fg_color="#9ef0c4", text_color="#07131d", hover_color="#c7f9dd",
+            font=("Segoe UI", 11, "bold"), corner_radius=10, command=self.on_mic_click
+        )
+        mic_btn.grid(row=0, column=2)
+
+        self.settings_frame = ctk.CTkFrame(
+            self.root, fg_color="#0d1d2a", corner_radius=14, border_width=1, border_color="#214b6b"
+        )
+        ctk.CTkLabel(self.settings_frame, text="HUD CONFIG", text_color="#9ed5ff", font=("Segoe UI", 10, "bold")).pack(pady=(10, 6))
+
+        op_frame = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
+        op_frame.pack(fill="x", padx=10, pady=4)
+        ctk.CTkLabel(op_frame, text="Opacity", text_color="#dbeeff", font=("Segoe UI", 9)).pack(side="left")
+        for alpha_val in [0.75, 0.9, 1.0]:
+            ctk.CTkButton(
+                op_frame, text=f"{int(alpha_val * 100)}%", width=46, height=24,
+                fg_color="#122738", text_color="#9ed5ff", hover_color="#183a59",
+                font=("Segoe UI", 8, "bold"), corner_radius=8,
+                command=lambda a=alpha_val: self.set_opacity(a)
+            ).pack(side="right", padx=2)
+
+        self.telemetry_toggle_btn = ctk.CTkButton(
+            self.settings_frame, text="Telemetry: ON", height=28,
+            fg_color="#122738", text_color="#9ef0c4", hover_color="#173b2f",
+            font=("Segoe UI", 9, "bold"), corner_radius=8,
+            command=self.toggle_telemetry
+        )
+        self.telemetry_toggle_btn.pack(fill="x", padx=10, pady=(6, 4))
+
+        self.voice_toggle_btn = ctk.CTkButton(
+            self.settings_frame, text="Voice: ON", height=28,
+            fg_color="#122738", text_color="#9ef0c4", hover_color="#173b2f",
+            font=("Segoe UI", 9, "bold"), corner_radius=8,
+            command=self.toggle_voice_feedback
+        )
+        self.voice_toggle_btn.pack(fill="x", padx=10, pady=4)
+
+        self.fullscreen_toggle_btn = ctk.CTkButton(
+            self.settings_frame, text="Fullscreen: OFF", height=28,
+            fg_color="#122738", text_color="#9ed5ff", hover_color="#183a59",
+            font=("Segoe UI", 9, "bold"), corner_radius=8,
+            command=self.toggle_fullscreen
+        )
+        self.fullscreen_toggle_btn.pack(fill="x", padx=10, pady=(4, 8))
+
+        provider_frame = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
+        provider_frame.pack(fill="x", padx=10, pady=(0, 10))
+        ctk.CTkLabel(provider_frame, text="Provider", text_color="#dbeeff", font=("Segoe UI", 9)).pack(side="left")
+        self.provider_menu = ctk.CTkOptionMenu(
+            provider_frame,
+            values=["Auto", "Groq", "Gemini", "Kilo", "Cloudflare", "AGY", "Ollama"],
+            width=120, height=28,
+            fg_color="#122738", text_color="#dbeeff",
+            button_color="#183a59", dropdown_fg_color="#071018", dropdown_text_color="#dbeeff",
+            font=("Segoe UI", 9), command=self.set_preferred_provider_for_ui,
+        )
+        self.provider_menu.pack(side="right")
+        self.provider_menu.set("Auto" if self.preferred_provider.lower() == "auto" else self.preferred_provider.title())
+
+        if self.show_telemetry:
+            self.telemetry_toggle_btn.configure(text="Telemetry: ON", text_color="#9ef0c4")
+        else:
+            self.telemetry_toggle_btn.configure(text="Telemetry: OFF", text_color="#ff9d9d")
+
+        if self.voice_enabled:
+            self.voice_toggle_btn.configure(text="Voice: ON", text_color="#9ef0c4")
+        else:
+            self.voice_toggle_btn.configure(text="Voice: OFF", text_color="#ff9d9d")
+
+        if self.fullscreen_mode:
+            self.fullscreen_toggle_btn.configure(text="Fullscreen: ON", text_color="#9ef0c4")
+            self._normal_geometry = self.root.geometry()
+            self.root.geometry(f"{self.root.winfo_screenwidth()}x{self.root.winfo_screenheight()}+0+0")
+
+        self.history_frame = ctk.CTkFrame(
+            self.root, fg_color="#0d1d2a", corner_radius=14, border_width=1, border_color="#7ae6c9"
+        )
+        ctk.CTkLabel(self.history_frame, text="MEMORY LOG", text_color="#9ef0c4", font=("Segoe UI", 10, "bold")).pack(pady=(10, 4))
+
+        self.history_box = ctk.CTkTextbox(
+            self.history_frame, height=120, fg_color="#071018", text_color="#dbeeff",
+            font=("Segoe UI", 9), border_spacing=8, activate_scrollbars=True
+        )
+        self.history_box.pack(fill="both", expand=True, padx=8, pady=4)
+        self.history_box.configure(state="disabled")
+
+        ctk.CTkButton(
+            self.history_frame, text="Refresh log", height=28,
+            fg_color="#122738", text_color="#9ef0c4", hover_color="#173b2f",
+            font=("Segoe UI", 9, "bold"), corner_radius=8,
+            command=self.load_history_data
+        ).pack(fill="x", padx=8, pady=(4, 10))
+
+        self.refresh_provider_status()
+        self.animate_rings()
+        self.process_ui_queue()
+
+    # --- DRAG WINDOW LOGIC ---
+    def start_move(self, event):
+        self._drag_x = event.x_root - self.root.winfo_x()
+        self._drag_y = event.y_root - self.root.winfo_y()
+
+    def do_move(self, event):
+        x = event.x_root - self._drag_x
+        y = event.y_root - self._drag_y
+        self.root.geometry(f"+{x}+{y}")
+
+    # --- PANEL TOGGLES ---
+    def toggle_settings_panel(self):
+        if self.history_visible:
+            self.history_frame.grid_remove()
+            self.history_visible = False
+        if self.settings_visible:
+            self.settings_frame.grid_remove()
+            self.settings_visible = False
+        else:
+            self.settings_frame.grid(row=2, column=0, sticky="ew", padx=12, pady=(0, 8))
+            self.settings_visible = True
+        set_runtime_state("settings_visible", self.settings_visible)
+
+    def toggle_history_panel(self):
+        if self.settings_visible:
+            self.settings_frame.grid_remove()
+            self.settings_visible = False
+        if self.history_visible:
+            self.history_frame.grid_remove()
+            self.history_visible = False
+        else:
+            self.history_frame.grid(row=2, column=0, sticky="ew", padx=12, pady=(0, 8))
+            self.history_visible = True
+            self.load_history_data()
+        set_runtime_state("history_visible", self.history_visible)
+
+    def load_history_data(self):
+        records = get_recent_history(limit=15)
+        self.history_box.configure(state="normal")
+        self.history_box.delete("0.0", "end")
+        if not records:
+            self.history_box.insert("0.0", "No archival logs recorded yet.")
+        else:
+            for timestamp, query, response in records:
+                self.history_box.insert("end", f"[{timestamp}]\nUSER: {query}\nJARVIS: {response}\n" + "─"*38 + "\n")
+        self.history_box.configure(state="disabled")
+
+    def set_opacity(self, alpha_val: float):
+        self.current_opacity = alpha_val
+        save_preference("opacity", alpha_val)
+        self.root.attributes("-alpha", alpha_val)
+
+    def toggle_telemetry(self):
+        self.show_telemetry = not self.show_telemetry
+        set_runtime_state("show_telemetry", self.show_telemetry)
+        save_preference("telemetry_visible", self.show_telemetry)
+        if self.show_telemetry:
+            self.telemetry_toggle_btn.configure(text="Telemetry Display: ON", text_color="#00ff88")
+        else:
+            self.telemetry_toggle_btn.configure(text="Telemetry Display: OFF", text_color="#ff4444")
+
+    def toggle_voice_feedback(self):
+        self.voice_enabled = not self.voice_enabled
+        set_voice_enabled(self.voice_enabled)
+        save_preference("voice_enabled", self.voice_enabled)
+        set_runtime_state("voice_enabled", self.voice_enabled)
+        if self.voice_enabled:
+            self.voice_toggle_btn.configure(text="Voice Feedback: ON", text_color="#00ff88")
+        else:
+            self.voice_toggle_btn.configure(text="Voice Feedback: OFF", text_color="#ff4444")
+
+    def toggle_fullscreen(self):
+        self.fullscreen_mode = not self.fullscreen_mode
+        set_runtime_state("fullscreen_mode", self.fullscreen_mode)
+        save_preference("fullscreen_mode", self.fullscreen_mode)
+
+        if self.fullscreen_mode:
+            self._normal_geometry = self.root.geometry()
+            screen_w = self.root.winfo_screenwidth()
+            screen_h = self.root.winfo_screenheight()
+            self.root.geometry(f"{screen_w}x{screen_h}+0+0")
+            self.fullscreen_toggle_btn.configure(text="Fullscreen: ON", text_color="#00ff88")
+        else:
+            if self._normal_geometry:
+                self.root.geometry(self._normal_geometry)
+            self.fullscreen_toggle_btn.configure(text="Fullscreen: OFF", text_color="#00f3ff")
+
+    def set_preferred_provider_for_ui(self, selected_value: str):
+        value = (selected_value or "Auto").strip()
+        normalized = value.lower()
+        if normalized in {"auto", "automatic", "default", "none"}:
+            self.preferred_provider = "auto"
+            set_preferred_provider(None)
+            save_preference("preferred_provider", "auto")
+            set_runtime_state("preferred_provider", "auto")
+            self.refresh_provider_status()
+            return
+
+        mapping = {
+            "groq": "groq",
+            "gemini": "gemini",
+            "kilo": "kilo",
+            "cloudflare": "cloudflare",
+            "agy": "agy",
+            "ollama": "ollama",
+        }
+
+        self.preferred_provider = mapping.get(normalized, normalized)
+        set_preferred_provider(self.preferred_provider)
+        save_preference("preferred_provider", self.preferred_provider)
+        set_runtime_state("preferred_provider", self.preferred_provider)
+        self.refresh_provider_status()
+
+    def toggle_hud(self):
+        if self.visible:
+            self.hide_hud()
+        else:
+            self.show_hud()
+
+    def hide_hud(self):
+        self.root.withdraw()
+        self.visible = False
+        set_runtime_state("visible", False)
+
+    def show_hud(self):
+        self.root.deiconify()
+        self.root.lift()
+        self.cmd_entry.focus_force()
+        self.visible = True
+        set_runtime_state("visible", True)
+
+    def refresh_provider_status(self):
+        active = get_active_provider()
+        self.provider_status_var.set(f"Provider: {active.upper() if active and active.lower() != 'auto' else 'AUTO'}")
+
+    def update_ui(self, status_text: str, state: str, reply_text: str = None):
+        self.ui_queue.put((status_text, state, reply_text))
+        if self._queue_job is None:
+            delay = 60 if state in {"thinking", "speaking"} else 120
+            self._queue_job = self.root.after(delay, self.process_ui_queue)
+
+    def process_ui_queue(self):
+        self._queue_job = None
+        while not self.ui_queue.empty():
+            status_text, state, reply_text = self.ui_queue.get()
+            self.status_var.set(status_text)
+            self.state = state
+            set_runtime_state("ui_state", self.state)
+            self.refresh_provider_status()
+            if reply_text:
+                self.response_box.configure(state="normal")
+                self.response_box.delete("0.0", "end")
+                self.response_box.insert("0.0", reply_text)
+                self.response_box.configure(state="disabled")
+        if self.visible and not self.ui_queue.empty():
+            self._queue_job = self.root.after(80, self.process_ui_queue)
+
+    def on_submit_text(self, event=None):
+        query = self.cmd_entry.get().strip()
+        if not query:
+            return
+        self.cmd_entry.delete(0, "end")
+        import threading
+        from jarvis import process_command
+
+        threading.Thread(
+            target=process_command, args=(query, self.update_ui), daemon=True
+        ).start()
+
+        threading.Thread(
+            target=lambda: save_interaction(query, "Processing..."), daemon=True
+        ).start()
+
+    def on_mic_click(self):
+        import threading
+        from modules.listener import listen_to_user
+        from jarvis import process_command
+
+        def background_listen():
+            query = listen_to_user(self.update_ui)
+            if query:
+                process_command(query, self.update_ui)
+            else:
+                self.update_ui("STANDBY // LISTENING", "idle", "Audio input unclear, Sir.")
+
+        threading.Thread(target=background_listen, daemon=True).start()
+
+    # --- WOBBLY VORTEX CANVAS ANIMATION ---
+    def animate_rings(self):
+        if self._animation_job is not None:
+            return
+
+        if not self.visible:
+            self._animation_job = self.root.after(200, self.animate_rings)
+            return
+
+        self._animation_job = self.root.after(120, self._animate_rings_frame)
+
+    def _animate_rings_frame(self):
+        self._animation_job = None
+        if not self.visible:
+            return
+
+        self.canvas.delete("all")
+        cx, cy = 230, 85
+
+        palette = {
+            "idle": ("#00f3ff", "#005577"),
+            "listening": ("#00ff88", "#006633"),
+            "thinking": ("#ffaa00", "#884400"),
+            "speaking": ("#38bdf8", "#0284c7"),
+        }
+        primary, secondary = palette.get(self.state, ("#00f3ff", "#005577"))
+
+        speed = 4 if self.state in ("thinking", "speaking") else 1
+        self.angle = (self.angle + speed) % 360
+
+        wobble_factor = 5 if self.state in ("thinking", "speaking", "listening") else 2.0
+
+        for i in range(3):
+            offset_angle = self.angle + (i * 50)
+            r_x = 65 + (i * 14) + math.sin(math.radians(offset_angle * 2)) * wobble_factor
+            r_y = 45 + (i * 11) + math.cos(math.radians(offset_angle * 2)) * wobble_factor
+
+            outline_color = primary if i % 2 == 0 else secondary
+
+            self.canvas.create_oval(
+                cx - r_x, cy - r_y, cx + r_x, cy + r_y,
+                outline=outline_color, width=2, dash=(4, 4) if i == 1 else None
+            )
+
+        self.canvas.create_arc(
+            cx - 80, cy - 60, cx + 80, cy + 60,
+            start=self.angle * 1.5, extent=130, style="arc", outline=primary, width=3
+        )
+        self.canvas.create_arc(
+            cx - 55, cy - 75, cx + 55, cy + 75,
+            start=-self.angle, extent=160, style="arc", outline=secondary, width=2
+        )
+
+        pulse = math.sin(math.radians(self.angle * 6)) * (8 if self.state == "speaking" else 2)
+        self.canvas.create_oval(
+            cx - 9 + pulse, cy - 9 + pulse, cx + 9 + pulse, cy + 9 + pulse,
+            fill=primary, outline=""
+        )
+
+        if self.show_telemetry:
+            now = time.monotonic()
+            if now - self._last_telemetry_update >= 1.5:
+                self._last_telemetry_update = now
+                cpu = psutil.cpu_percent(interval=None)
+                ram = psutil.virtual_memory().percent
+                self.canvas.create_text(
+                    55, 18, text=f"CPU: {cpu}%", fill=secondary, font=("Consolas", 9, "bold")
+                )
+                self.canvas.create_text(
+                    405, 18, text=f"RAM: {ram}%", fill=secondary, font=("Consolas", 9, "bold")
+                )
+
+        self.animate_rings()

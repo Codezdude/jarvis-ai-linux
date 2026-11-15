@@ -1,0 +1,12 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^python -m py_compile modules\\\\ui\\.py modules\\\\memory\\.py$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    },
+    "python.terminal.useEnvFile": true,
+    "permissions.allow": [
+        "command(*)"
+    ]
+}

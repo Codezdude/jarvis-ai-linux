@@ -1,0 +1,89 @@
+{
+  "status": "ok",
+  "bots": [
+    {
+      "bot": "memory_cleanup_bot",
+      "status": "ok",
+      "notes_count": 12,
+      "summary": "Memory stream reviewed and duplicates removed from the most recent project notes.",
+      "highlights": [
+        "Persistent memory for JARVIS.",
+        "Current rules:",
+        "- Keep responses concise and natural for spoken audio.",
+        "- Address the user as Sir.",
+        "- Prefer safe, local project-scoped file operations."
+      ]
+    },
+    {
+      "bot": "experiment_review_bot",
+      "status": "ok",
+      "experiments_seen": 15,
+      "summary": "Recent experiment folders were scanned to find reusable patterns and promising concept directions.",
+      "entries": [
+        {
+          "name": "brand_testing_20261115-014357",
+          "summary": "# brand_testing\n\nCreated: 2026-11-15 01:43:57\n\nThis folder is reserved for project experiments, prototypes, and model-driven testing."
+        },
+        {
+          "name": "brand_testing_20261115-014438",
+          "summary": "# brand_testing\n\nCreated: 2026-11-15 01:44:38\n\nThis folder is reserved for project experiments, prototypes, and model-driven testing."
+        },
+        {
+          "name": "brand_testing_20261115-014441",
+          "summary": "# brand_testing\n\nCreated: 2026-11-15 01:44:41\n\nThis folder is reserved for project experiments, prototypes, and model-driven testing."
+        },
+        {
+          "name": "brand_testing_20261115-014444",
+          "summary": "# brand_testing\n\nCreated: 2026-11-15 01:44:44\n\nThis folder is reserved for project experiments, prototypes, and model-driven testing."
+        },
+        {
+          "name": "brand_testing_20261115-014446",
+          "summary": "# brand_testing\n\nCreated: 2026-11-15 01:44:46\n\nThis folder is reserved for project experiments, prototypes, and model-driven testing."
+        },
+        {
+          "name": "brand_testing_20261115-014447",
+          "summary": "# brand_testing\n\nCreated: 2026-11-15 01:44:47\n\nThis folder is reserved for project experiments, prototypes, and model-driven testing."
+        }
+      ]
+    },
+    {
+      "bot": "quality_guard_bot",
+      "status": "ok",
+      "files_scanned": 22,
+      "issues_found": 0,
+      "summary": "A local syntax scan completed; the project quality signals were logged for future learning loops.",
+      "issues": []
+    },
+    {
+      "bot": "content_idea_bot",
+      "status": "ok",
+      "summary": "New local content directions were harvested from recent notes and experiment history.",
+      "ideas": [
+        "Turn the latest project note into a test: 'Persistent memory for JARVIS.'",
+        "Launch a premium blue creator campaign around trust, speed, and storytelling.",
+        "Create a calm luxury product mockup with editorial typography and a warm gold accent.",
+        "Design a minimal experiment comparing bold vs. premium positioning across three landing-page styles."
+      ]
+    },
+    {
+      "bot": "tech_ir_learning_bot",
+      "status": "ok",
+      "summary": "Public technical references were reviewed for automation, image-generation, and local tooling learnings.",
+      "sources": [
+        {
+          "source": "https://www.python.org/",
+          "summary": "Source reachable but no content was captured in this environment."
+        },
+        {
+          "source": "https://pypi.org/project/Pillow/",
+          "summary": "Source reachable but no content was captured in this environment."
+        },
+        {
+          "source": "https://playwright.dev/",
+          "summary": "Source reachable but no content was captured in this environment."
+        }
+      ]
+    }
+  ],
+  "summary": "Free local learning bots completed successfully and saved their results under generated_code/."
+}

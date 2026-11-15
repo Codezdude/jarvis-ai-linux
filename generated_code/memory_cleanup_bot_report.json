@@ -1,0 +1,13 @@
+{
+  "bot": "memory_cleanup_bot",
+  "status": "ok",
+  "notes_count": 12,
+  "summary": "Memory stream reviewed and duplicates removed from the most recent project notes.",
+  "highlights": [
+    "Persistent memory for JARVIS.",
+    "Current rules:",
+    "- Keep responses concise and natural for spoken audio.",
+    "- Address the user as Sir.",
+    "- Prefer safe, local project-scoped file operations."
+  ]
+}

@@ -1,0 +1,156 @@
+[
+  {
+    "brand_name": "Nova Studio",
+    "approved": false,
+    "status": "pending-approval",
+    "review_notes": "Awaiting human approval.",
+    "last_updated": "2026-11-15T00:21:08Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": true,
+    "status": "approved-for-publish",
+    "review_notes": "Ready to publish",
+    "last_updated": "2026-11-15T00:21:08Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": false,
+    "status": "pending-approval",
+    "review_notes": "Awaiting human approval.",
+    "last_updated": "2026-11-15T00:21:21Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": true,
+    "status": "approved-for-publish",
+    "review_notes": "Ready to publish",
+    "last_updated": "2026-11-15T00:21:21Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": false,
+    "status": "pending-approval",
+    "review_notes": "Awaiting human approval.",
+    "last_updated": "2026-11-15T00:25:26Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": true,
+    "status": "approved-for-publish",
+    "review_notes": "Ready to publish",
+    "last_updated": "2026-11-15T00:25:26Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": false,
+    "status": "pending-approval",
+    "review_notes": "Awaiting human approval.",
+    "last_updated": "2026-11-15T00:28:44Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": true,
+    "status": "approved-for-publish",
+    "review_notes": "Ready to publish",
+    "last_updated": "2026-11-15T00:28:44Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": false,
+    "status": "pending-approval",
+    "review_notes": "Awaiting human approval.",
+    "last_updated": "2026-11-15T00:34:18Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": true,
+    "status": "approved-for-publish",
+    "review_notes": "Ready to publish",
+    "last_updated": "2026-11-15T00:34:18Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": false,
+    "status": "pending-approval",
+    "review_notes": "Awaiting human approval.",
+    "last_updated": "2026-11-15T00:37:00Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": true,
+    "status": "approved-for-publish",
+    "review_notes": "Ready to publish",
+    "last_updated": "2026-11-15T00:37:00Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": false,
+    "status": "pending-approval",
+    "review_notes": "Awaiting human approval.",
+    "last_updated": "2026-11-15T00:37:21Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": true,
+    "status": "approved-for-publish",
+    "review_notes": "Ready to publish",
+    "last_updated": "2026-11-15T00:37:21Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": false,
+    "status": "pending-approval",
+    "review_notes": "Awaiting human approval.",
+    "last_updated": "2026-11-15T00:41:49Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": true,
+    "status": "approved-for-publish",
+    "review_notes": "Ready to publish",
+    "last_updated": "2026-11-15T00:41:49Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": false,
+    "status": "pending-approval",
+    "review_notes": "Awaiting human approval.",
+    "last_updated": "2026-11-15T00:42:58Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": true,
+    "status": "approved-for-publish",
+    "review_notes": "Ready to publish",
+    "last_updated": "2026-11-15T00:42:58Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": false,
+    "status": "pending-approval",
+    "review_notes": "Awaiting human approval.",
+    "last_updated": "2026-11-15T00:44:00Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": true,
+    "status": "approved-for-publish",
+    "review_notes": "Ready to publish",
+    "last_updated": "2026-11-15T00:44:00Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": false,
+    "status": "pending-approval",
+    "review_notes": "Awaiting human approval.",
+    "last_updated": "2026-11-15T00:51:42Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": true,
+    "status": "approved-for-publish",
+    "review_notes": "Ready to publish",
+    "last_updated": "2026-11-15T00:51:42Z"
+  }
+]

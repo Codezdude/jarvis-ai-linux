@@ -1,0 +1,32 @@
+{
+  "bot": "experiment_review_bot",
+  "status": "ok",
+  "experiments_seen": 15,
+  "summary": "Recent experiment folders were scanned to find reusable patterns and promising concept directions.",
+  "entries": [
+    {
+      "name": "brand_testing_20261115-014357",
+      "summary": "# brand_testing\n\nCreated: 2026-11-15 01:43:57\n\nThis folder is reserved for project experiments, prototypes, and model-driven testing."
+    },
+    {
+      "name": "brand_testing_20261115-014438",
+      "summary": "# brand_testing\n\nCreated: 2026-11-15 01:44:38\n\nThis folder is reserved for project experiments, prototypes, and model-driven testing."
+    },
+    {
+      "name": "brand_testing_20261115-014441",
+      "summary": "# brand_testing\n\nCreated: 2026-11-15 01:44:41\n\nThis folder is reserved for project experiments, prototypes, and model-driven testing."
+    },
+    {
+      "name": "brand_testing_20261115-014444",
+      "summary": "# brand_testing\n\nCreated: 2026-11-15 01:44:44\n\nThis folder is reserved for project experiments, prototypes, and model-driven testing."
+    },
+    {
+      "name": "brand_testing_20261115-014446",
+      "summary": "# brand_testing\n\nCreated: 2026-11-15 01:44:46\n\nThis folder is reserved for project experiments, prototypes, and model-driven testing."
+    },
+    {
+      "name": "brand_testing_20261115-014447",
+      "summary": "# brand_testing\n\nCreated: 2026-11-15 01:44:47\n\nThis folder is reserved for project experiments, prototypes, and model-driven testing."
+    }
+  ]
+}

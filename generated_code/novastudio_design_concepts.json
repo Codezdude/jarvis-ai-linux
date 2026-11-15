@@ -1,0 +1,35 @@
+{
+  "brand_name": "Nova Studio",
+  "platform": "instagram",
+  "audience": "creators",
+  "tone": "premium and bold",
+  "colors": [
+    "blue",
+    "gold"
+  ],
+  "concepts": [
+    {
+      "name": "Nova Studio Signal",
+      "tagline": "Premium storytelling for creators",
+      "description": "A high-contrast premium and bold look, using blue, gold to frame the brand in a clean luxury layout.",
+      "layout": "full-bleed portrait, strong headline, minimal product focus",
+      "cta": "Follow for launch updates"
+    },
+    {
+      "name": "Nova Studio Momentum",
+      "tagline": "Bold fresh energy for creators",
+      "description": "Fast-paced motion-inspired concept emphasizing depth, contrast, and modern premium and bold styling.",
+      "layout": "checkerboard grid with layered text and visual rhythm",
+      "cta": "Save this for later"
+    },
+    {
+      "name": "Nova Studio Authority",
+      "tagline": "Trust-first creative for creators",
+      "description": "A calm, premium identity anchored in polished typography and a confident premium and bold visual language.",
+      "layout": "minimal hero card with strong text hierarchy and a subtle product detail",
+      "cta": "See the full story"
+    }
+  ],
+  "recommended_concept": "Nova Studio Signal",
+  "status": "concept-ready"
+}

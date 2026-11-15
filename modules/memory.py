@@ -1,0 +1,299 @@
+import json
+import os
+import sqlite3
+import uuid
+from datetime import datetime
+
+from config.settings import DB_PATH
+from modules.db import log_long_term_memory, search_long_term_memory
+
+_RUNTIME_STATE = {}
+
+
+def set_runtime_state(key: str, value):
+    """Store a runtime-only value that is not persisted in the long-term memory database."""
+    _RUNTIME_STATE[key] = value
+    return value
+
+
+def get_runtime_state(key: str, default=None):
+    """Fetch the current runtime-only value for a given key."""
+    return _RUNTIME_STATE.get(key, default)
+
+
+def clear_runtime_state():
+    """Reset runtime-only values after a restart or explicit reset."""
+    _RUNTIME_STATE.clear()
+
+
+def init_db():
+    """Ensure the memory, conversation logs, and history tables exist."""
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS memory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT,
+            key TEXT UNIQUE,
+            value TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS conversation_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            speaker TEXT,
+            message TEXT
+        )
+        """
+    )
+    # Unified history table used by the UI drawer
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            query TEXT,
+            response TEXT
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+
+
+def save_memory(content: str, category: str = "general") -> str:
+    """Save a new memory entry without overwriting older memories."""
+    if not content or not content.strip():
+        return "No memory content provided, Sir."
+
+    memory_key = uuid.uuid4().hex
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    stored = content.strip()
+    cursor.execute(
+        "INSERT INTO memory (category, key, value, created_at) VALUES (?, ?, ?, ?)",
+        (
+            category,
+            memory_key,
+            stored,
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    try:
+        from modules.vector_memory import save_vector_memory
+        save_vector_memory(stored, category=category)
+    except Exception:
+        pass
+
+    return f"Saved memory under key: {memory_key}"
+
+
+def remember(category: str, key: str, value: str):
+    """Backward-compatible helper for older memory code."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    stored = str(value)
+    cursor.execute(
+        "INSERT OR REPLACE INTO memory (category, key, value, created_at) VALUES (?, ?, ?, ?)",
+        (category, key, stored, datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+    )
+    conn.commit()
+    conn.close()
+
+    try:
+        from modules.vector_memory import save_vector_memory
+        save_vector_memory(stored, category=category)
+    except Exception:
+        pass
+
+
+def recall_memories(limit: int = 20):
+    """Return recent chat history records or memories depending on context."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Check if the UI history table has records first
+    cursor.execute(
+        "SELECT timestamp, query, response FROM history ORDER BY id DESC LIMIT ?",
+        (limit,),
+    )
+    rows = cursor.fetchall()
+    
+    if rows:
+        conn.close()
+        return rows  # Returns formatted rows for the UI history drawer
+    
+    # Fallback to general memory table if history is empty
+    cursor.execute(
+        "SELECT category, value, created_at FROM memory ORDER BY id DESC LIMIT ?",
+        (limit,),
+    )
+    memory_rows = cursor.fetchall()
+    conn.close()
+
+    if not memory_rows:
+        return []
+
+    return [(timestamp, category, value) for category, value, timestamp in memory_rows]
+
+
+def get_recent_history(limit: int = 15):
+    """Retrieves recent chat history records for the UI drawer."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT timestamp, query, response FROM history ORDER BY id DESC LIMIT ?",
+            (limit,),
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+    except Exception as e:
+        print(f"Database read error: {e}")
+        return []
+
+
+def save_interaction(query: str, response: str):
+    """Saves a user query and JARVIS response to the UI history table."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO history (query, response, timestamp) VALUES (?, ?, ?)",
+            (query, response, datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Database save error: {e}")
+
+
+def recall(key: str) -> str:
+    """Look up a memory by its exact key."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM memory WHERE key = ? ORDER BY id DESC", (key,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else "Data not found in memory, Sir."
+
+
+def save_preference(key: str, value: str | bool | int | float) -> str:
+    """Persist a user preference under the settings category for later recall."""
+    remember("settings", key, str(value))
+    return str(value)
+
+
+def get_preference(key: str, default=None):
+    """Load a persisted setting by key, falling back to a default when missing."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT value FROM memory WHERE category = ? AND key = ? ORDER BY id DESC LIMIT 1",
+        ("settings", key),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if row is None:
+        return default
+    return row[0]
+
+
+def recall_by_category(category: str, limit: int = 20):
+    """Return a list of memory values for a category."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT value, created_at FROM memory WHERE category = ? ORDER BY id DESC LIMIT ?",
+        (category, limit),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
+def search_memories(query: str, limit: int = 20):
+    """Search memory entries by text keyword."""
+    q = f"%{query.lower()}%"
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT category, value, created_at FROM memory WHERE lower(value) LIKE ? ORDER BY id DESC LIMIT ?",
+        (q, limit),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
+def save_structured_memory(category: str, key: str, value: dict):
+    """Persist structured memory values in JSON form for profile/topic context."""
+    remember(category, key, json.dumps(value, ensure_ascii=False))
+
+
+def reindex_memory_pipeline(force: bool = False) -> dict:
+    """Rebuild the semantic cache and memory index so retrieval stays current after new memories are saved."""
+    try:
+        from modules.vector_memory import reindex_semantic_memory
+        semantic_count = reindex_semantic_memory(force=force)
+    except Exception:
+        semantic_count = 0
+
+    try:
+        from modules.workspace_growth import build_project_memory_index
+        build_project_memory_index(force=True)
+        memory_index_rebuilt = True
+    except Exception:
+        memory_index_rebuilt = False
+
+    return {
+        "semantic_reindexed": semantic_count,
+        "memory_index_rebuilt": memory_index_rebuilt,
+    }
+
+
+def load_structured_memory(category: str, key: str, default=None):
+    """Load structured memory values from JSON when present."""
+    raw = recall(key)
+    if raw == "Data not found in memory, Sir." or raw == "":
+        return default
+    try:
+        return json.loads(raw)
+    except Exception:
+        return default
+
+
+def get_memory_entry(key: str, default: str = "") -> str:
+    """Read a single memory entry by key, regardless of category."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT value FROM memory WHERE key = ? ORDER BY id DESC LIMIT 1",
+        (key,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else default
+
+
+def log_chat(speaker: str, message: str):
+    """Persist messages to the conversation log table."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO conversation_logs (speaker, message) VALUES (?, ?)",
+        (speaker, message),
+    )
+    conn.commit()
+    conn.close()

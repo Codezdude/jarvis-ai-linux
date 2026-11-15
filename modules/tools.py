@@ -459,11 +459,19 @@ def create_promotional_flyer(
       draw.rectangle([40, 40, width - 40, height - 40], outline="#00f3ff", width=4)
 
       try:
-          title_font = ImageFont.truetype("arial.ttf", 72)
-          sub_font = ImageFont.truetype("arial.ttf", 38)
+          title_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 72)
       except IOError:
-          title_font = ImageFont.load_default()
-          sub_font = ImageFont.load_default()
+          try:
+              title_font = ImageFont.truetype("arial.ttf", 72)
+          except IOError:
+              title_font = ImageFont.load_default()
+      try:
+          sub_font = ImageFont.truetype("DejaVuSans.ttf", 38)
+      except IOError:
+          try:
+              sub_font = ImageFont.truetype("arial.ttf", 38)
+          except IOError:
+              sub_font = ImageFont.load_default()
 
       draw.text((80, 260), (headline or "JARVIS Growth Pack")[:48], fill="#00f3ff", font=title_font)
       draw.text((80, 520), (subtext or "Carousels built for saves, shares, and DMs.")[:100], fill="#cceeff", font=sub_font)
@@ -589,11 +597,19 @@ def generate_image(prompt: str, filename: str = "jarvis_generated.png", width: i
     subtitle = "Local AI learning image"
 
     try:
-      title_font = ImageFont.truetype("arial.ttf", 54)
-      sub_font = ImageFont.truetype("arial.ttf", 28)
+      title_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 54)
     except IOError:
-      title_font = ImageFont.load_default()
-      sub_font = ImageFont.load_default()
+      try:
+          title_font = ImageFont.truetype("arial.ttf", 54)
+      except IOError:
+          title_font = ImageFont.load_default()
+    try:
+      sub_font = ImageFont.truetype("DejaVuSans.ttf", 28)
+    except IOError:
+      try:
+          sub_font = ImageFont.truetype("arial.ttf", 28)
+      except IOError:
+          sub_font = ImageFont.load_default()
 
     draw.text((60, 220), title, fill="#9fe7ff", font=title_font)
     draw.text((60, 420), subtitle, fill="#d8f3ff", font=sub_font)

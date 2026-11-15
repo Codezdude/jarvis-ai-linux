@@ -81,7 +81,7 @@ class JarvisHUD:
 
         title_lbl = ctk.CTkLabel(
             header, text="JARVIS // QUANTUM CORE",
-            text_color="#dbeeff", font=("Segoe UI", 12, "bold")
+            text_color="#dbeeff", font=("DejaVu Sans", 12, "bold")
         )
         title_lbl.pack(side="left", padx=14, pady=8)
         title_lbl.bind("<ButtonPress-1>", self.start_move)
@@ -92,28 +92,28 @@ class JarvisHUD:
 
         self.settings_btn = ctk.CTkButton(
             actions, text="\u2699", width=30, height=28, fg_color="transparent",
-            text_color="#9ed5ff", hover_color="#183047", font=("Segoe UI", 11, "bold"),
+            text_color="#9ed5ff", hover_color="#183047", font=("DejaVu Sans", 11, "bold"),
             command=self.toggle_settings_panel
         )
         self.settings_btn.pack(side="right", padx=(0, 6))
 
         history_btn = ctk.CTkButton(
             actions, text="\u25eb", width=30, height=28, fg_color="transparent",
-            text_color="#9ef0c4", hover_color="#173b2f", font=("Segoe UI", 11, "bold"),
+            text_color="#9ef0c4", hover_color="#173b2f", font=("DejaVu Sans", 11, "bold"),
             command=self.toggle_history_panel
         )
         history_btn.pack(side="right", padx=(0, 6))
 
         hide_btn = ctk.CTkButton(
             actions, text="\u2014", width=30, height=28, fg_color="transparent",
-            text_color="#dbeeff", hover_color="#1a2d3d", font=("Segoe UI", 11, "bold"),
+            text_color="#dbeeff", hover_color="#1a2d3d", font=("DejaVu Sans", 11, "bold"),
             command=self.hide_hud
         )
         hide_btn.pack(side="right", padx=(0, 6))
 
         close_btn = ctk.CTkButton(
             actions, text="\u2715", width=30, height=28, fg_color="transparent",
-            text_color="#ff9d9d", hover_color="#341d1d", font=("Segoe UI", 11, "bold"),
+            text_color="#ff9d9d", hover_color="#341d1d", font=("DejaVu Sans", 11, "bold"),
             command=self.root.quit
         )
         close_btn.pack(side="right")
@@ -139,21 +139,21 @@ class JarvisHUD:
 
         self.status_var = ctk.StringVar(value="SYSTEMS ONLINE")
         self.status_label = ctk.CTkLabel(
-            main_panel, textvariable=self.status_var, text_color="#92d2ff",
-            font=("Segoe UI", 10, "bold")
+            main_panel, textvariable=self.status_var,             text_color="#92d2ff",
+            font=("DejaVu Sans", 10, "bold")
         )
         self.status_label.grid(row=0, column=0, sticky="w", padx=14, pady=(12, 4))
 
         self.provider_status_var = ctk.StringVar(value="Provider: AUTO")
         self.provider_status_label = ctk.CTkLabel(
             main_panel, textvariable=self.provider_status_var, text_color="#9ef0c4",
-            font=("Segoe UI", 9)
+            font=("DejaVu Sans", 9)
         )
         self.provider_status_label.grid(row=1, column=0, sticky="w", padx=14, pady=(0, 8))
 
         self.response_box = ctk.CTkTextbox(
             main_panel, fg_color="#071018", text_color="#deefff",
-            font=("Segoe UI", 10), corner_radius=12, border_spacing=12,
+            font=("DejaVu Sans", 10), corner_radius=12, border_spacing=12,
             border_width=1, border_color="#18324e", activate_scrollbars=True
         )
         self.response_box.insert("0.0", "Quantum core online. Systems initialized. Awaiting request...")
@@ -167,7 +167,7 @@ class JarvisHUD:
         self.cmd_entry = ctk.CTkEntry(
             input_frame, fg_color="#071018", text_color="#deefff",
             placeholder_text="Ask JARVIS something...", placeholder_text_color="#67839a",
-            font=("Segoe UI", 10), border_width=1, border_color="#214b6b", height=38, corner_radius=10
+            font=("DejaVu Sans", 10), border_width=1, border_color="#214b6b", height=38, corner_radius=10
         )
         self.cmd_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
         self.cmd_entry.bind("<Return>", self.on_submit_text)
@@ -175,37 +175,37 @@ class JarvisHUD:
         send_btn = ctk.CTkButton(
             input_frame, text="RUN", width=70, height=38,
             fg_color="#8dd4ff", text_color="#07131d", hover_color="#b0e5ff",
-            font=("Segoe UI", 10, "bold"), corner_radius=10, command=self.on_submit_text
+            font=("DejaVu Sans", 10, "bold"), corner_radius=10, command=self.on_submit_text
         )
         send_btn.grid(row=0, column=1, padx=(0, 6))
 
         mic_btn = ctk.CTkButton(
             input_frame, text="\U0001f3a4", width=44, height=38,
             fg_color="#9ef0c4", text_color="#07131d", hover_color="#c7f9dd",
-            font=("Segoe UI", 11, "bold"), corner_radius=10, command=self.on_mic_click
+            font=("DejaVu Sans", 11, "bold"), corner_radius=10, command=self.on_mic_click
         )
         mic_btn.grid(row=0, column=2)
 
         self.settings_frame = ctk.CTkFrame(
             self.root, fg_color="#0d1d2a", corner_radius=14, border_width=1, border_color="#214b6b"
         )
-        ctk.CTkLabel(self.settings_frame, text="HUD CONFIG", text_color="#9ed5ff", font=("Segoe UI", 10, "bold")).pack(pady=(10, 6))
+        ctk.CTkLabel(self.settings_frame, text="HUD CONFIG", text_color="#9ed5ff", font=("DejaVu Sans", 10, "bold")).pack(pady=(10, 6))
 
         op_frame = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
         op_frame.pack(fill="x", padx=10, pady=4)
-        ctk.CTkLabel(op_frame, text="Opacity", text_color="#dbeeff", font=("Segoe UI", 9)).pack(side="left")
+        ctk.CTkLabel(op_frame, text="Opacity", text_color="#dbeeff", font=("DejaVu Sans", 9)).pack(side="left")
         for alpha_val in [0.75, 0.9, 1.0]:
             ctk.CTkButton(
                 op_frame, text=f"{int(alpha_val * 100)}%", width=46, height=24,
                 fg_color="#122738", text_color="#9ed5ff", hover_color="#183a59",
-                font=("Segoe UI", 8, "bold"), corner_radius=8,
+                font=("DejaVu Sans", 8, "bold"), corner_radius=8,
                 command=lambda a=alpha_val: self.set_opacity(a)
             ).pack(side="right", padx=2)
 
         self.telemetry_toggle_btn = ctk.CTkButton(
             self.settings_frame, text="Telemetry: ON", height=28,
             fg_color="#122738", text_color="#9ef0c4", hover_color="#173b2f",
-            font=("Segoe UI", 9, "bold"), corner_radius=8,
+            font=("DejaVu Sans", 9, "bold"), corner_radius=8,
             command=self.toggle_telemetry
         )
         self.telemetry_toggle_btn.pack(fill="x", padx=10, pady=(6, 4))
@@ -213,7 +213,7 @@ class JarvisHUD:
         self.voice_toggle_btn = ctk.CTkButton(
             self.settings_frame, text="Voice: ON", height=28,
             fg_color="#122738", text_color="#9ef0c4", hover_color="#173b2f",
-            font=("Segoe UI", 9, "bold"), corner_radius=8,
+            font=("DejaVu Sans", 9, "bold"), corner_radius=8,
             command=self.toggle_voice_feedback
         )
         self.voice_toggle_btn.pack(fill="x", padx=10, pady=4)
@@ -221,21 +221,21 @@ class JarvisHUD:
         self.fullscreen_toggle_btn = ctk.CTkButton(
             self.settings_frame, text="Fullscreen: OFF", height=28,
             fg_color="#122738", text_color="#9ed5ff", hover_color="#183a59",
-            font=("Segoe UI", 9, "bold"), corner_radius=8,
+            font=("DejaVu Sans", 9, "bold"), corner_radius=8,
             command=self.toggle_fullscreen
         )
         self.fullscreen_toggle_btn.pack(fill="x", padx=10, pady=(4, 8))
 
         provider_frame = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
         provider_frame.pack(fill="x", padx=10, pady=(0, 10))
-        ctk.CTkLabel(provider_frame, text="Provider", text_color="#dbeeff", font=("Segoe UI", 9)).pack(side="left")
+        ctk.CTkLabel(provider_frame, text="Provider", text_color="#dbeeff", font=("DejaVu Sans", 9)).pack(side="left")
         self.provider_menu = ctk.CTkOptionMenu(
             provider_frame,
             values=["Auto", "Groq", "Gemini", "Kilo", "Cloudflare", "AGY", "Ollama"],
             width=120, height=28,
             fg_color="#122738", text_color="#dbeeff",
             button_color="#183a59", dropdown_fg_color="#071018", dropdown_text_color="#dbeeff",
-            font=("Segoe UI", 9), command=self.set_preferred_provider_for_ui,
+            font=("DejaVu Sans", 9), command=self.set_preferred_provider_for_ui,
         )
         self.provider_menu.pack(side="right")
         self.provider_menu.set("Auto" if self.preferred_provider.lower() == "auto" else self.preferred_provider.title())
@@ -258,11 +258,11 @@ class JarvisHUD:
         self.history_frame = ctk.CTkFrame(
             self.root, fg_color="#0d1d2a", corner_radius=14, border_width=1, border_color="#7ae6c9"
         )
-        ctk.CTkLabel(self.history_frame, text="MEMORY LOG", text_color="#9ef0c4", font=("Segoe UI", 10, "bold")).pack(pady=(10, 4))
+        ctk.CTkLabel(self.history_frame, text="MEMORY LOG", text_color="#9ef0c4", font=("DejaVu Sans", 10, "bold")).pack(pady=(10, 4))
 
         self.history_box = ctk.CTkTextbox(
             self.history_frame, height=120, fg_color="#071018", text_color="#dbeeff",
-            font=("Segoe UI", 9), border_spacing=8, activate_scrollbars=True
+            font=("DejaVu Sans", 9), border_spacing=8, activate_scrollbars=True
         )
         self.history_box.pack(fill="both", expand=True, padx=8, pady=4)
         self.history_box.configure(state="disabled")
@@ -270,7 +270,7 @@ class JarvisHUD:
         ctk.CTkButton(
             self.history_frame, text="Refresh log", height=28,
             fg_color="#122738", text_color="#9ef0c4", hover_color="#173b2f",
-            font=("Segoe UI", 9, "bold"), corner_radius=8,
+            font=("DejaVu Sans", 9, "bold"), corner_radius=8,
             command=self.load_history_data
         ).pack(fill="x", padx=8, pady=(4, 10))
 
@@ -531,7 +531,7 @@ class JarvisHUD:
                 cpu = psutil.cpu_percent(interval=None)
                 ram = psutil.virtual_memory().percent
                 self.canvas.create_text(
-                    46, 12, text=f"CPU:{cpu}% RAM:{ram}%", fill=secondary, font=("Consolas", 8, "bold")
+                    46, 12, text=f"CPU:{cpu}% RAM:{ram}%", fill=secondary,         font=("DejaVu Sans Mono", 8, "bold")
                 )
 
         self.animate_rings()

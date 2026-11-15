@@ -133,7 +133,7 @@ CLOUD_MODEL_GROQ = get_env_value("GROQ_MODEL", "llama-3.3-70b-versatile")
 CLOUDFLARE_MODEL = get_env_value("CLOUDFLARE_MODEL", "@cf/meta/llama-3.3-70b-instruct-fp8-fast")
 CLOUD_MODEL_GEMINI = get_env_value("GEMINI_MODEL", "gemini-3.8-flash")
 
-AGY_PATH = shutil.which("agy") or os.path.expandvars(r"%LOCALAPPDATA%\agy\bin\agy.exe")
+AGY_PATH = shutil.which("agy")
 if not AGY_PATH or not os.path.exists(AGY_PATH):
     AGY_PATH = ""
 
@@ -1572,3 +1572,11 @@ def ask_local_brain_with_tools(query: str) -> str:
                 reply = response["message"]["content"]
                 reply = cognitive_review_loop(query, reply)
                 CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
+                set_active_provider(provider)
+                return reply
+
+        except Exception as e:
+            log_error(f"Provider {provider} failed: {e}")
+            continue
+
+    return "No AI provider returned a valid response, Sir."

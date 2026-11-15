@@ -6,9 +6,11 @@ import subprocess
 from datetime import datetime
 
 try:
-    from openai import OpenAI
+    from openai import OpenAI, APITimeoutError, APIConnectionError
 except ImportError:  # pragma: no cover - optional dependency for cloud-compatible gateways
     OpenAI = None
+    APITimeoutError = Exception
+    APIConnectionError = Exception
 
 try:
     import ollama
@@ -136,7 +138,7 @@ if not AGY_PATH or not os.path.exists(AGY_PATH):
     AGY_PATH = ""
 
 # Initialize clients dynamically
-groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY and Groq else None
+groq_client = Groq(api_key=GROQ_API_KEY, timeout=12.0) if GROQ_API_KEY and Groq else None
 gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY and genai else None
 
 # Define available tools that the models can execute autonomously
@@ -685,16 +687,7 @@ def _clean_message_text(message: dict) -> str:
 
 
 def extract_structured_preferences(text: str | list[str]) -> dict:
-    """Turn unstructured user facts or summary points into an actionable learned preferences object.
-    
-    Structure:
-      - communication: guidance on output style (concise, direct, conversational, etc.)
-      - technical: languages, frameworks, environments, tools (python, fastapi, etc.)
-      - design: visual styling, palette, tone (premium, minimal, colors)
-      - goals: priorities, business / workflow objectives
-      - constraints: rules, things to avoid or respect
-      - explicit: raw actionable preference snippets
-    """
+    """Turn unstructured user facts or summary points into an actionable learned preferences object."""
     if isinstance(text, list):
         combined = " ".join(str(item).strip() for item in text if item)
     else:
@@ -713,7 +706,6 @@ def extract_structured_preferences(text: str | list[str]) -> dict:
         "explicit": [],
     }
 
-    # 1. Communication style detection
     if any(k in lower for k in ["concise", "brief", "short", "bullet", "bullet point"]):
         prefs["communication"].append("concise and direct answers")
     if any(k in lower for k in ["spoken", "voice", "audio", "natural", "conversational"]):
@@ -723,7 +715,6 @@ def extract_structured_preferences(text: str | list[str]) -> dict:
     if any(k in lower for k in ["sir", "formal"]):
         prefs["communication"].append("address user respectfully as Sir")
 
-    # 2. Technical preferences
     tech_patterns = [
         "python", "javascript", "typescript", "fastapi", "react", "sqlite",
         "customtkinter", "docker", "git", "ollama", "groq", "gemini"
@@ -732,7 +723,6 @@ def extract_structured_preferences(text: str | list[str]) -> dict:
         if re.search(rf"\b{tech}\b", lower):
             prefs["technical"].append(tech)
 
-    # 3. Design & visual style
     styles = ["premium", "luxury", "minimal", "clean", "modern", "bold", "calm", "elegant"]
     found_styles = [s for s in styles if re.search(rf"\b{s}\b", lower)]
     if found_styles:
@@ -743,7 +733,6 @@ def extract_structured_preferences(text: str | list[str]) -> dict:
     if found_colors:
         prefs["design"].append(f"palette: {', '.join(found_colors)}")
 
-    # 4. Goals & workflow targets
     if any(k in lower for k in ["growth", "learn", "self-improve", "evolve", "autonomous"]):
         prefs["goals"].append("autonomous self-learning and self-improvement")
     if any(k in lower for k in ["automate", "automation", "scheduled", "background"]):
@@ -751,20 +740,17 @@ def extract_structured_preferences(text: str | list[str]) -> dict:
     if any(k in lower for k in ["marketing", "social media", "brand", "campaign"]):
         prefs["goals"].append("brand development and high-converting marketing")
 
-    # 5. Constraints
     if any(k in lower for k in ["safe", "safety", "local-only", "workspace-only", "project-scoped", "workspace", "boundaries", "boundary"]):
         prefs["constraints"].append("preserve local project workspace boundaries")
     if any(k in lower for k in ["no fluff", "straight to the point", "don't ask"]):
         prefs["constraints"].append("avoid conversational filler")
 
-    # 6. Explicit preference extraction
     matches = re.findall(r"(?:prefer|like|love|want|need|always|never)\s+(?:to\s+)?([^.;!?]+)", combined, re.IGNORECASE)
     for m in matches:
         clean = " ".join(m.strip().split())
         if 4 < len(clean) < 80:
             prefs["explicit"].append(clean.lower())
 
-    # Prune empty keys and deduplicate
     structured = {}
     for key, items in prefs.items():
         deduped = sorted(set(items))
@@ -806,7 +792,6 @@ def extract_user_preferences_from_message(message: str) -> dict:
     if re.search(r"\b(branding|logo|caption|landing page|social media|website|design|product)\b", lower):
         preferences["interest_area"] = "creative design"
 
-    # Merge in structured guidance dimensions
     guidance = extract_structured_preferences(text)
     if guidance:
         preferences["structured_guidance"] = guidance
@@ -932,7 +917,6 @@ def get_relevant_memory_context(query: str) -> str:
             if isinstance(value, str) and len(value) > 3:
                 memory_lines.append(value)
 
-    # Build a compact retrieval summary so the active prompt remains small and useful.
     deduped = []
     seen = set()
     for line in memory_lines:
@@ -1062,17 +1046,14 @@ def _build_conversation_summary(history: list[dict]) -> str:
         recent_facts = user_facts[-4:]
         structured_prefs = extract_structured_preferences(recent_facts)
         
-        # Build structured preferences object
         prefs_payload = {
             "recent_facts": recent_facts,
             "guidance": structured_prefs,
             "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
         
-        # Persist structured object
         remember("profile", "conversation_preferences", json.dumps(prefs_payload, ensure_ascii=False))
         
-        # Also update learned_preferences store for deep system recall
         if structured_prefs:
             existing_learned_raw = get_memory_entry("learned_preferences", "")
             merged_learned = {}
@@ -1089,7 +1070,6 @@ def _build_conversation_summary(history: list[dict]) -> str:
                     merged_learned[k] = vals
             remember("profile", "learned_preferences", json.dumps(merged_learned, ensure_ascii=False))
 
-        # Format clean, structured text guidance for system context injection
         guidance_sections = []
         if structured_prefs.get("communication"):
             guidance_sections.append(f"Tone/Pacing: {', '.join(structured_prefs['communication'])}")
@@ -1129,8 +1109,9 @@ def trim_and_summarize_conversation(history: list[dict]) -> list[dict]:
     final_history.extend(recent_messages)
     return final_history[:12]
 
+
 def ask_local_brain(query: str) -> str:
-    """Standard text generation fallback using local Ollama."""
+    """Standard text generation fallback using local Ollama with a strict timeout."""
     if ollama is None:
         return "Local Ollama is not installed or unavailable in this environment."
     try:
@@ -1183,7 +1164,7 @@ def call_antigravity_cli(messages: list) -> str:
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
-                timeout=90,
+                timeout=12,
             )
             output = (result.stdout or result.stderr or "").strip()
             if result.returncode == 0 and output:
@@ -1200,7 +1181,7 @@ def call_antigravity_cli(messages: list) -> str:
 
 
 def call_cloudflare_workers_ai(messages: list) -> str:
-    """Routes chat completions through Cloudflare Workers AI using the OpenAI compatibility layer."""
+    """Routes chat completions through Cloudflare Workers AI using the OpenAI compatibility layer with timeout."""
     if OpenAI is None:
         raise RuntimeError("openai package is not installed; Cloudflare gateway cannot be used.")
 
@@ -1211,13 +1192,14 @@ def call_cloudflare_workers_ai(messages: list) -> str:
 
     client = OpenAI(
         base_url=f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
-        api_key=api_token,
+        api_token=api_token,
+        timeout=12.0,
     )
 
     response = client.chat.completions.create(
         model=CLOUDFLARE_MODEL,
         messages=sanitize_fallback_messages(messages),
-        timeout=30,
+        timeout=12.0,
     )
 
     content = response.choices[0].message.content
@@ -1225,7 +1207,7 @@ def call_cloudflare_workers_ai(messages: list) -> str:
 
 
 def call_kilo_gateway(messages: list) -> str:
-    """Routes chat completions through Kilo AI Gateway's free model pool."""
+    """Routes chat completions through Kilo AI Gateway's free model pool with a strict 12s timeout."""
     if OpenAI is None:
         raise RuntimeError("openai package is not installed; Kilo gateway cannot be used.")
 
@@ -1233,11 +1215,12 @@ def call_kilo_gateway(messages: list) -> str:
     client = OpenAI(
         base_url="https://ai-gateway.kilo.ai/api/v1",
         api_key=api_key,
+        timeout=12.0,
     )
     response = client.chat.completions.create(
         model="kilo-auto/free",
         messages=sanitize_fallback_messages(messages),
-        timeout=30,
+        timeout=12.0,
     )
     content = response.choices[0].message.content
     return (content or "").strip()
@@ -1417,7 +1400,7 @@ def choose_provider_order(query: str, available_providers: list[str] | None = No
 
 
 def ask_local_brain_with_tools(query: str) -> str:
-    """Choose the best available provider for the current request, then fall back only if needed."""
+    """Choose the best available provider for the current request, executing a strict timeout and automatic failover loop."""
     global CONVERSATION_HISTORY
     save_user_profile_memory(query)
     CONVERSATION_HISTORY.append({"role": "user", "content": query})
@@ -1436,7 +1419,7 @@ def ask_local_brain_with_tools(query: str) -> str:
     if explicit_override:
         print(f"[ROUTER] Manual provider override active: {explicit_override}")
 
-    print(f"[ROUTER] Request-aware provider order: {provider_order}")
+    print(f"[ROUTER] Request-aware provider order (Timeout: 12s per tier): {provider_order}")
 
     for provider in provider_order:
         set_active_provider(provider)
@@ -1448,6 +1431,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                     messages=CONVERSATION_HISTORY,
                     tools=TOOL_SCHEMAS,
                     tool_choice="auto",
+                    timeout=12.0,
                 )
                 message = response.choices[0].message
 
@@ -1465,6 +1449,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                         final_response = groq_client.chat.completions.create(
                             model=CLOUD_MODEL_GROQ,
                             messages=CONVERSATION_HISTORY,
+                            timeout=12.0,
                         )
                         reply = final_response.choices[0].message.content
                         reply = cognitive_review_loop(query, reply)
@@ -1586,12 +1571,4 @@ def ask_local_brain_with_tools(query: str) -> str:
 
                 reply = response["message"]["content"]
                 reply = cognitive_review_loop(query, reply)
-                CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
-                set_active_provider(provider)
-                return reply
-
-        except Exception as exc:
-            print(f"[ROUTER WARNING] Provider '{provider}' failed: {exc}. Trying the next best available provider...")
-
-    set_active_provider("auto")
-    return "All available providers failed while handling this request. Please try again or add credentials for a stronger model tier."
+                CONVERSATION_HISTORY.append({"role": "assistant", "content

@@ -182,3 +182,4 @@ JARVIS becomes most useful when you treat it as a structured assistant, not a fr
 - memory is used thoughtfully
 
 That is the balance that makes JARVIS practical, powerful, and safe.
+# jarvis-ai-linux

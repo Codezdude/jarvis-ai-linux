@@ -3,14 +3,20 @@
     "filesystem": {
       "transport": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/millennium/jarvis_project"],
-      "enabled": false
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/home/millennium/jarvis_project"
+      ],
+      "enabled": true
     },
     "fetch": {
       "transport": "stdio",
       "command": "uvx",
-      "args": ["mcp-server-fetch"],
-      "enabled": false
+      "args": [
+        "mcp-server-fetch"
+      ],
+      "enabled": true
     }
   }
 }

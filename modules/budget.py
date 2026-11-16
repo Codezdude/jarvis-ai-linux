@@ -83,7 +83,118 @@ def init_budget_db(db_path: str = DEFAULT_DB_PATH) -> None:
                 """,
                 (now,),
             )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS provider_telemetry (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    date_utc TEXT NOT NULL,
+                    provider TEXT NOT NULL,
+                    model TEXT DEFAULT '',
+                    prompt_tokens INTEGER DEFAULT 0,
+                    completion_tokens INTEGER DEFAULT 0,
+                    latency_ms REAL DEFAULT 0.0,
+                    success INTEGER DEFAULT 1,
+                    is_urgent INTEGER DEFAULT 1
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_telemetry_date_provider ON provider_telemetry(date_utc, provider)"
+            )
             conn.commit()
+
+
+DEFAULT_DAILY_CLOUD_TOKEN_CAP = int(os.getenv("JARVIS_DAILY_CLOUD_TOKEN_CAP", "250000"))
+OFFLOAD_THRESHOLD_RATIO = 0.80
+
+
+def record_provider_usage(
+    provider: str,
+    model: str = "",
+    prompt_tokens: int = 0,
+    completion_tokens: int = 0,
+    latency_ms: float = 0.0,
+    success: bool = True,
+    is_urgent: bool = True,
+    db_path: str = DEFAULT_DB_PATH,
+) -> None:
+    """Persist a single provider call's token/latency telemetry."""
+    init_budget_db(db_path)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    with _BUDGET_LOCK:
+        with _get_connection(db_path) as conn:
+            conn.execute(
+                """
+                INSERT INTO provider_telemetry
+                (timestamp, date_utc, provider, model, prompt_tokens, completion_tokens, latency_ms, success, is_urgent)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    now.isoformat(),
+                    now.strftime("%Y-%m-%d"),
+                    provider.lower(),
+                    model,
+                    max(0, int(prompt_tokens)),
+                    max(0, int(completion_tokens)),
+                    round(float(latency_ms), 2),
+                    1 if success else 0,
+                    1 if is_urgent else 0,
+                ),
+            )
+            conn.commit()
+
+
+def get_daily_cloud_tokens(date_utc: Optional[str] = None, db_path: str = DEFAULT_DB_PATH) -> int:
+    """Return total cloud (non-ollama) tokens used on the given UTC date."""
+    init_budget_db(db_path)
+    target = date_utc or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    with _get_connection(db_path) as conn:
+        row = conn.execute(
+            "SELECT COALESCE(SUM(prompt_tokens + completion_tokens), 0) "
+            "FROM provider_telemetry WHERE date_utc = ? AND provider != 'ollama'",
+            (target,),
+        ).fetchone()
+        return int(row[0] or 0)
+
+
+def should_offload_to_ollama(
+    is_urgent: bool = True,
+    daily_cap: int = DEFAULT_DAILY_CLOUD_TOKEN_CAP,
+    threshold_ratio: float = OFFLOAD_THRESHOLD_RATIO,
+    db_path: str = DEFAULT_DB_PATH,
+) -> bool:
+    """Return True when non-urgent requests should skip cloud and use local Ollama."""
+    if is_urgent or daily_cap <= 0:
+        return False
+    used = get_daily_cloud_tokens(db_path=db_path)
+    return used >= int(daily_cap * threshold_ratio)
+
+
+def get_provider_telemetry_summary(
+    date_utc: Optional[str] = None, db_path: str = DEFAULT_DB_PATH
+) -> list:
+    """Return per-provider aggregated usage for the given UTC date."""
+    init_budget_db(db_path)
+    target = date_utc or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    with _get_connection(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT provider,
+                   COUNT(*) AS calls,
+                   SUM(prompt_tokens) AS prompt_tokens,
+                   SUM(completion_tokens) AS completion_tokens,
+                   ROUND(AVG(latency_ms), 1) AS avg_latency_ms,
+                   SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) AS errors
+            FROM provider_telemetry
+            WHERE date_utc = ?
+            GROUP BY provider
+            ORDER BY calls DESC
+            """,
+            (target,),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
 
 def get_effective_limits(db_path: str = DEFAULT_DB_PATH) -> Dict[str, int]:

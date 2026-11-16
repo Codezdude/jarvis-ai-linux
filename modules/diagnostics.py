@@ -96,3 +96,28 @@ def trigger_self_repair_if_needed(
     )
 
     return {"goal_id": goal["id"], "diagnostics": result}
+
+
+def get_available_ram_mb() -> float:
+    """Return available RAM in MB by parsing /proc/meminfo (Linux), else +inf."""
+    try:
+        with open("/proc/meminfo") as fh:
+            meminfo = {}
+            for line in fh:
+                parts = line.split(":")
+                if len(parts) == 2:
+                    meminfo[parts[0].strip()] = parts[1].strip()
+        # MemAvailable is preferred; fall back to MemFree
+        raw = meminfo.get("MemAvailable") or meminfo.get("MemFree")
+        if raw:
+            kb = float(raw.split()[0])
+            return kb / 1024.0
+    except Exception:
+        pass
+    return float("inf")
+
+
+def check_memory_headroom(min_available_mb: int = 1200) -> "tuple[bool, float]":
+    """Return (available_mb >= min_available_mb, available_mb)."""
+    avail = get_available_ram_mb()
+    return (avail >= min_available_mb, avail)

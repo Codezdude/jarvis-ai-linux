@@ -288,3 +288,45 @@ def format_preferences_for_prompt(
         lines.append(f"- [{src.upper()}] {key}: {effective[key]}")
 
     return "\n".join(lines), traced_keys
+
+
+# --- Persistent runtime settings (JSON-backed, used by the Settings UI) ---
+
+import json as _json
+from pathlib import Path as _Path
+
+RUNTIME_SETTINGS_PATH = _Path(__file__).resolve().parent.parent / "data" / "runtime_settings.json"
+
+DEFAULT_RUNTIME_SETTINGS = {
+    "routing_mode": "auto",
+    "daily_cloud_token_cap": 250000,
+    "min_available_ram_mb": 1200,
+    "require_edit_approval": True,
+    "tts_enabled": True,
+    "mic_muted": False,
+    "hud_always_on_top": False,
+    "auto_update_on_startup": True,
+    "scheduler_enabled": True,
+}
+
+
+def get_runtime_settings(settings_path=None) -> dict:
+    settings = dict(DEFAULT_RUNTIME_SETTINGS)
+    path = _Path(settings_path) if settings_path else RUNTIME_SETTINGS_PATH
+    try:
+        if path.exists():
+            loaded = _json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                settings.update(loaded)
+    except Exception:
+        pass
+    return settings
+
+
+def update_runtime_settings(updates: dict, settings_path=None) -> dict:
+    path = _Path(settings_path) if settings_path else RUNTIME_SETTINGS_PATH
+    current = get_runtime_settings(settings_path=path)
+    current.update({k: v for k, v in updates.items() if k in DEFAULT_RUNTIME_SETTINGS})
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(_json.dumps(current, indent=2), encoding="utf-8")
+    return current

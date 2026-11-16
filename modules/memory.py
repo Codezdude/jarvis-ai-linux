@@ -77,6 +77,54 @@ def init_db():
         )
         """
     )
+    # Role/content chat messages with multi-session support (drives the HUD chat view)
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL DEFAULT 'default',
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_messages(session_id, id)"
+    )
+    # Rolling per-session summaries produced by context compaction
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS session_summaries (
+            session_id TEXT PRIMARY KEY,
+            summary TEXT,
+            updated_at TEXT
+        )
+        """
+    )
+    # Full-text search index over chat messages (FTS5, best-effort)
+    try:
+        cursor.execute("DROP TABLE IF EXISTS memory_fts")
+        cursor.execute(
+            """
+            CREATE VIRTUAL TABLE memory_fts
+            USING fts5(doc_id UNINDEXED, session_id UNINDEXED, content, tokenize='porter unicode61')
+            """
+        )
+    except sqlite3.OperationalError:
+        pass
+    # Lightweight hashed-embedding vector store for hybrid search
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS memory_vectors (
+            doc_id TEXT PRIMARY KEY,
+            session_id TEXT,
+            content TEXT,
+            vec_json TEXT,
+            created_at TEXT
+        )
+        """
+    )
     conn.commit()
     conn.close()
 
@@ -160,26 +208,126 @@ def recall_memories(limit: int = 20):
     return [(timestamp, category, value) for category, value, timestamp in memory_rows]
 
 
-def get_recent_history(limit: int = 15):
-    """Retrieves recent chat history records for the UI drawer."""
+def get_recent_history(
+    limit: int = 40,
+    session_id: str = "default",
+    db_path: str = None,
+):
+    """Return recent chat messages for a session as a list of dicts.
+
+    Each dict has keys: ``id``, ``role``, ``content``, ``timestamp`` so existing
+    callers can render bubbles and support edit/resend. ``session_id`` defaults
+    to ``"default"`` to preserve backwards compatibility.
+    """
+    db_path = db_path or DB_PATH
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT timestamp, query, response FROM history ORDER BY id DESC LIMIT ?",
-            (limit,),
-        )
-        rows = cursor.fetchall()
+        init_db()
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT id, role, content, timestamp FROM chat_messages "
+            "WHERE session_id = ? ORDER BY id DESC LIMIT ?",
+            (session_id, limit),
+        ).fetchall()
         conn.close()
-        return rows
+        return [
+            {
+                "id": row["id"],
+                "role": row["role"],
+                "content": row["content"],
+                "timestamp": row["timestamp"],
+            }
+            for row in reversed(rows)
+        ]
     except Exception as e:
         print(f"Database read error: {e}")
         return []
 
 
-def save_interaction(query: str, response: str):
-    """Saves a user query and JARVIS response to the UI history table."""
+def save_chat_message(role: str, content: str, session_id: str = "default", db_path: str = None) -> int:
+    """Persist a single role/content message and index it for hybrid search. Returns row id."""
+    db_path = db_path or DB_PATH
+    init_db()
+    conn = sqlite3.connect(db_path)
+    cur = conn.execute(
+        "INSERT INTO chat_messages (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)",
+        (session_id, role, content, datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+    )
+    msg_id = cur.lastrowid
+    conn.commit()
+    conn.close()
     try:
+        index_memory_entry(doc_id=str(msg_id), session_id=session_id, content=content)
+    except Exception:
+        pass
+    return msg_id
+
+
+def delete_history_from_id(message_id: int, session_id: str = "default", db_path: str = None) -> int:
+    """Rewind chat history from ``message_id`` onward within a session. Returns rows deleted."""
+    db_path = db_path or DB_PATH
+    init_db()
+    conn = sqlite3.connect(db_path)
+    cur = conn.execute(
+        "DELETE FROM chat_messages WHERE session_id = ? AND id >= ?",
+        (session_id, message_id),
+    )
+    conn.commit()
+    deleted = cur.rowcount
+    conn.close()
+    return deleted
+
+
+def list_sessions(db_path: str = None) -> list[str]:
+    """Return distinct session ids ordered by most recent activity, always including 'default'."""
+    db_path = db_path or DB_PATH
+    try:
+        init_db()
+        conn = sqlite3.connect(db_path)
+        rows = conn.execute(
+            "SELECT session_id, MAX(id) AS last_id FROM chat_messages "
+            "GROUP BY session_id ORDER BY last_id DESC"
+        ).fetchall()
+        conn.close()
+        sessions = [r[0] for r in rows]
+    except Exception:
+        sessions = []
+    if "default" not in sessions:
+        sessions.insert(0, "default")
+    return sessions
+
+
+def get_session_summary(session_id: str, db_path: str = None) -> str:
+    db_path = db_path or DB_PATH
+    try:
+        init_db()
+        conn = sqlite3.connect(db_path)
+        row = conn.execute(
+            "SELECT summary FROM session_summaries WHERE session_id = ?", (session_id,)
+        ).fetchone()
+        conn.close()
+        return (row[0] if row and row[0] else "") or ""
+    except Exception:
+        return ""
+
+
+def save_session_summary(session_id: str, summary: str, db_path: str = None) -> None:
+    db_path = db_path or DB_PATH
+    init_db()
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO session_summaries (session_id, summary, updated_at) VALUES (?, ?, ?) "
+        "ON CONFLICT(session_id) DO UPDATE SET summary = excluded.summary, updated_at = excluded.updated_at",
+        (session_id, summary, datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+    )
+    conn.commit()
+    conn.close()
+
+
+def save_interaction(query: str, response: str, session_id: str = "default"):
+    """Save a user query + JARVIS response into both the legacy history table and chat_messages."""
+    try:
+        init_db()
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute(
@@ -190,6 +338,11 @@ def save_interaction(query: str, response: str):
         conn.close()
     except Exception as e:
         print(f"Database save error: {e}")
+    try:
+        save_chat_message("user", query, session_id=session_id)
+        save_chat_message("assistant", response, session_id=session_id)
+    except Exception as e:
+        print(f"Chat message save error: {e}")
 
 
 def save_reflection(query: str, raw_response: str, final_response: str, critique: str = "", category: str = "general") -> str:
@@ -443,3 +596,110 @@ def log_chat(speaker: str, message: str):
     )
     conn.commit()
     conn.close()
+
+# --- Hybrid Search: SQLite FTS5 + lightweight hashed embeddings ---
+
+_EMBED_DIM = 128
+
+
+def _embed_text(text: str) -> list[float]:
+    """Deterministic 128-dim L2-normalized hashed token/trigram embedding (stdlib only)."""
+    import hashlib
+    import math
+    import re as _re
+
+    vec = [0.0] * _EMBED_DIM
+    tokens = _re.findall(r"[a-z0-9]+", (text or "").lower())
+    # character trigrams add robustness for short/rare tokens
+    padded = f"  {(text or '').lower()}  "
+    grams = [padded[i:i + 3] for i in range(len(padded) - 2)]
+    for feat in tokens + grams:
+        h = int(hashlib.md5(feat.encode("utf-8")).hexdigest(), 16)
+        idx = h % _EMBED_DIM
+        sign = 1.0 if (h >> 8) & 1 else -1.0
+        vec[idx] += sign
+    norm = math.sqrt(sum(v * v for v in vec))
+    if norm > 0:
+        vec = [v / norm for v in vec]
+    return vec
+
+
+def index_memory_entry(doc_id: str, session_id: str, content: str, db_path: str = None) -> None:
+    """Insert a message into the FTS index and the vector store."""
+    db_path = db_path or DB_PATH
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "INSERT INTO memory_fts (doc_id, session_id, content) VALUES (?, ?, ?)",
+            (doc_id, session_id, content),
+        )
+        vec_json = json.dumps(_embed_text(content))
+        conn.execute(
+            "INSERT OR REPLACE INTO memory_vectors (doc_id, session_id, content, vec_json, created_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (doc_id, session_id, content, vec_json, datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Memory index error: {e}")
+
+
+def _cosine(a: list[float], b: list[float]) -> float:
+    if not a or not b:
+        return 0.0
+    return sum(x * y for x, y in zip(a, b))
+
+
+def search_hybrid_memory(query: str, top_k: int = 5, db_path: str = None) -> list[dict]:
+    """Combine FTS5 bm25 lexical scores with cosine similarity over memory_vectors."""
+    db_path = db_path or DB_PATH
+    results: dict[str, dict] = {}
+    try:
+        init_db()
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        # Lexical arm via FTS5 bm25 (lower bm25 is better -> invert)
+        try:
+            rows = conn.execute(
+                "SELECT doc_id, session_id, content, bm25(memory_fts) AS score "
+                "FROM memory_fts WHERE memory_fts MATCH ? ORDER BY score LIMIT ?",
+                (query, top_k * 3),
+            ).fetchall()
+            for r in rows:
+                results[r["doc_id"]] = {
+                    "doc_id": r["doc_id"],
+                    "session_id": r["session_id"],
+                    "content": r["content"],
+                    "lexical": 1.0 / (1.0 + abs(r["score"])),
+                    "vector": 0.0,
+                }
+        except sqlite3.OperationalError:
+            pass
+        # Vector arm via cosine similarity
+        qvec = _embed_text(query)
+        vrows = conn.execute(
+            "SELECT doc_id, session_id, content, vec_json FROM memory_vectors"
+        ).fetchall()
+        for r in vrows:
+            try:
+                vvec = json.loads(r["vec_json"])
+            except Exception:
+                continue
+            sim = _cosine(qvec, vvec)
+            entry = results.setdefault(
+                r["doc_id"],
+                {"doc_id": r["doc_id"], "session_id": r["session_id"], "content": r["content"], "lexical": 0.0},
+            )
+            entry["vector"] = max(entry["vector"], sim)
+        conn.close()
+    except Exception as e:
+        print(f"Hybrid search error: {e}")
+        return []
+
+    scored = []
+    for entry in results.values():
+        entry["score"] = round(entry.get("lexical", 0.0) + entry.get("vector", 0.0), 6)
+        scored.append(entry)
+    scored.sort(key=lambda e: e["score"], reverse=True)
+    return scored[:top_k]

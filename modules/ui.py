@@ -497,8 +497,16 @@ class JarvisHUD:
         if not records:
             self.history_box.insert("0.0", "No archival logs recorded yet.")
         else:
-            for timestamp, query, response in records:
-                self.history_box.insert("end", f"[{timestamp}]\nUSER: {query}\nJARVIS: {response}\n" + "\u2500"*38 + "\n")
+            for rec in records:
+                if isinstance(rec, dict):
+                    ts = rec.get("timestamp", "")
+                    role = rec.get("role", "")
+                    content = rec.get("content", "")
+                    who = "USER" if role == "user" else "JARVIS"
+                    self.history_box.insert("end", f"[{ts}]\n{who}: {content}\n" + "\u2500"*38 + "\n")
+                else:
+                    timestamp, query, response = rec
+                    self.history_box.insert("end", f"[{timestamp}]\nUSER: {query}\nJARVIS: {response}\n" + "\u2500"*38 + "\n")
 
         # Render latest DecisionTrace badge if available
         trace = get_latest_decision_trace()

@@ -119,6 +119,19 @@ def process_one_idle_goal(
     from modules.goals import init_goals_db, is_stopped
     init_goals_db(db_path)
 
+    # Pre-flight RAM guardrail: skip heavy work when memory is low
+    try:
+        from modules.diagnostics import check_memory_headroom
+        from modules.preferences import get_runtime_settings
+
+        min_mb = int(get_runtime_settings().get("min_available_ram_mb", 1200))
+        ok, avail_mb = check_memory_headroom(min_available_mb=min_mb)
+        if not ok:
+            log_error(f"[SCHEDULER] Skipping background tick: low available RAM ({avail_mb:.0f} MB)")
+            return {"ran": False, "status": "low_ram", "steps_executed": 0}
+    except Exception:
+        pass
+
     # Skip processing if the stop flag is set
     if is_stopped():
         return {"ran": False, "status": "stopped", "steps_executed": 0}
@@ -291,6 +304,30 @@ def run_reactive_tick(db_path: str = os.path.join(os.path.dirname(os.path.dirnam
         "mined_goals": [],
         "budget_ok": True,
     }
+
+    # Pre-flight RAM guardrail
+    try:
+        from modules.diagnostics import check_memory_headroom
+        from modules.preferences import get_runtime_settings
+
+        min_mb = int(get_runtime_settings().get("min_available_ram_mb", 1200))
+        ok, avail_mb = check_memory_headroom(min_available_mb=min_mb)
+        if not ok:
+            log_error(f"[SCHEDULER] Skipping background tick: low available RAM ({avail_mb:.0f} MB)")
+            return {"ran": False, "status": "low_ram", "mined_goals": [], "budget_ok": True}
+    except Exception:
+        pass
+
+    # Proactive maintenance triggers (disk/backup guard + daily digest)
+    try:
+        from modules.triggers import run_daily_health_digest, run_disk_and_backup_guard
+
+        guard = run_disk_and_backup_guard()
+        results["disk_guard"] = guard
+        digest = run_daily_health_digest()
+        results["digest"] = digest
+    except Exception as e:
+        log_error(f"Reactive tick proactive triggers failed: {e}")
 
     try:
         mined = mine_failure_corpus(db_path=db_path)

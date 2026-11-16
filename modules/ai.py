@@ -1369,7 +1369,7 @@ def trim_and_summarize_conversation(history: list[dict]) -> list[dict]:
     return [merged_system] + kept_recent
 
 
-def ask_local_brain(query: str, force_provider: str | None = None) -> str:
+def ask_local_brain(query: str, force_provider: str | None = None, is_urgent: bool = True) -> str:
     """Standard text generation using local Ollama with a strict timeout.
 
     Args:
@@ -1712,6 +1712,26 @@ def _mark_provider_failed(provider: str) -> None:
     _PROVIDER_COOLDOWN[provider] = time.time() + _COOLDOWN_SECONDS
 
 
+ACTION_KEYWORDS = (
+    "file", "folder", "directory", "run", "execute", "script", "code", "git",
+    "search", "find", "list", "read", "write", "edit", "delete", "create",
+    "system", "disk", "ram", "cpu", "process", "goal", "schedule", "test", "log",
+)
+
+
+def should_attach_tools(prompt: str) -> bool:
+    """Fast-path router: decide whether a prompt needs tool schemas attached.
+
+    Short conversational prompts with no action keywords skip tool mode entirely.
+    """
+    cleaned = (prompt or "").strip().lower()
+    if not cleaned:
+        return False
+    if len(cleaned.split()) <= 3 and not any(k in cleaned for k in ACTION_KEYWORDS):
+        return False
+    return any(k in cleaned for k in ACTION_KEYWORDS) or "/" in cleaned or "." in cleaned
+
+
 def _query_needs_tools(query: str) -> bool:
     """Only attach the 35 JSON tool schemas when the request likely needs an external action."""
     q = (query or "").lower()
@@ -1863,7 +1883,7 @@ def _extract_tool_from_xml_inner(inner: str) -> tuple[str | None, dict]:
     return (name, {}) if name else (None, {})
 
 
-def ask_local_brain_with_tools(query: str, force_provider: str | None = None) -> str:
+def ask_local_brain_with_tools(query: str, force_provider: str | None = None, is_urgent: bool = True) -> str:
     """Choose the best available provider for the current request, executing a strict timeout and automatic failover loop.
 
     Args:
@@ -1905,6 +1925,27 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None) ->
         provider_order = [p for p in provider_order if p == force_provider]
         if not provider_order and force_provider in get_available_providers():
             provider_order = [force_provider]
+    else:
+        # Runtime routing mode + automatic 80% cloud-cap offload to Ollama
+        try:
+            from modules.preferences import get_runtime_settings
+
+            routing_mode = get_runtime_settings().get("routing_mode", "auto")
+            daily_cap = int(get_runtime_settings().get("daily_cloud_token_cap", 250000))
+        except Exception:
+            routing_mode, daily_cap = "auto", 250000
+        if routing_mode == "ollama_only":
+            provider_order = ["ollama"] if "ollama" in get_available_providers() else provider_order
+        else:
+            try:
+                from modules.budget import should_offload_to_ollama
+
+                if should_offload_to_ollama(is_urgent=is_urgent, daily_cap=daily_cap):
+                    print("[ROUTER] Daily cloud quota >= 80% cap; shifting non-urgent request to local Ollama.")
+                    if "ollama" in get_available_providers():
+                        provider_order = ["ollama"]
+            except Exception:
+                pass
     if not provider_order:
         return _finalize_ai_turn(decision_trace, "No AI providers are available in this environment. Configure a model key or install Ollama.", "error")
 
@@ -1914,7 +1955,7 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None) ->
 
     print(f"[ROUTER] Request-aware provider order (Timeout: 12s per tier): {provider_order}")
 
-    use_tools = _query_needs_tools(query)
+    use_tools = should_attach_tools(query)
     active_tools = (TOOL_SCHEMAS + get_all_dynamic_tool_schemas()) if use_tools else None
 
     for provider in provider_order:

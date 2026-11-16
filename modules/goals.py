@@ -33,7 +33,7 @@ def init_goals_db(db_path: str = DEFAULT_DB_PATH) -> None:
                     description TEXT NOT NULL,
                     priority INTEGER NOT NULL DEFAULT 50,
                     status TEXT NOT NULL CHECK(
-                        status IN ('pending', 'running', 'paused_interrupted', 'completed', 'failed', 'blocked')
+                        status IN ('pending', 'running', 'paused_interrupted', 'paused_budget', 'completed', 'failed', 'blocked')
                     ),
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
@@ -115,3 +115,43 @@ def get_goal(goal_id: str, db_path: str = DEFAULT_DB_PATH) -> Optional[Dict[str,
     data = dict(row)
     data["checkpoint"] = json.loads(data.get("checkpoint_json") or "{}")
     return data
+
+
+def update_goal(
+    goal_id: str,
+    status: Optional[str] = None,
+    checkpoint: Optional[Dict[str, Any]] = None,
+    last_error: Optional[str] = None,
+    db_path: str = DEFAULT_DB_PATH,
+) -> bool:
+    """Updates a goal's status, checkpoint JSON, and/or last_error in place."""
+    init_goals_db(db_path)
+    updates: List[str] = []
+    params: List[Any] = []
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    if status is not None:
+        updates.append("status = ?")
+        params.append(status)
+    if checkpoint is not None:
+        updates.append("checkpoint_json = ?")
+        params.append(json.dumps(checkpoint, ensure_ascii=False))
+    if last_error is not None:
+        updates.append("last_error = ?")
+        params.append(last_error)
+
+    if not updates:
+        return False
+
+    updates.append("updated_at = ?")
+    params.append(now)
+    params.append(goal_id)
+
+    with _GOALS_LOCK:
+        with _get_connection(db_path) as conn:
+            cur = conn.execute(
+                f"UPDATE goals SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+            conn.commit()
+            return cur.rowcount > 0

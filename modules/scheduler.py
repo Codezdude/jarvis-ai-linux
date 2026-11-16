@@ -1,10 +1,13 @@
 import datetime
+import os
 import threading
 import time
+from typing import Any, Callable, Dict
+
 from modules.ai import ask_local_brain
+from modules.budget import record_budget_usage
 from modules.logger import log_error, log_info
 from modules.tools import get_current_time, get_system_diagnostics
-from modules.voice import speak
 
 
 class JarvisScheduler:
@@ -50,6 +53,7 @@ class JarvisScheduler:
     )
 
     briefing_text = ask_local_brain(prompt)
+    from modules.voice import speak
     speak(briefing_text, self.hud_callback)
 
   def _run_scheduler(self):
@@ -69,3 +73,165 @@ class JarvisScheduler:
           log_error(f"Error in automated briefing scheduler: {e}")
 
       time.sleep(30)
+
+
+def process_one_idle_goal(
+    step_executor: Callable[[Dict[str, Any], int, Dict[str, Any]], Dict[str, Any]],
+    max_steps: int = 8,
+    db_path: str = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "jarvis_memory.db"),
+) -> Dict[str, Any]:
+    """
+    Picks one pending goal from the goals database and runs it through the
+    step_executor (typically modules/planner.planned_step_executor) until the
+    goal completes, fails, or exhausts its step budget.
+
+    The step_executor is called once per loop iteration with
+    (goal, step_index, checkpoint) and is expected to mutate `checkpoint` in
+    place and return {"step_done": bool, "goal_complete": bool, "step_output": str}.
+    """
+    from modules.goals import get_goal, update_goal, enqueue_goal
+    from modules.reflections import evaluate_task_rubric
+
+    import os as _os
+    import json as _json
+
+    project_root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    default_db = _os.path.join(project_root, "data", "jarvis_memory.db")
+    if db_path is None:
+        db_path = default_db
+
+    # Import sqlite here to avoid coupling at module load time
+    import sqlite3 as _sqlite3
+
+    def _get_connection(db_path: str) -> _sqlite3.Connection:
+        _os.makedirs(_os.path.dirname(_os.path.abspath(db_path)), exist_ok=True)
+        conn = _sqlite3.connect(db_path)
+        conn.row_factory = _sqlite3.Row
+        return conn
+
+    # Ensure schema exists
+    from modules.goals import init_goals_db
+    init_goals_db(db_path)
+
+    # Pick the highest-priority pending goal
+    with _get_connection(db_path) as conn:
+        row = conn.execute(
+            """
+            SELECT * FROM goals
+            WHERE status = 'pending'
+            ORDER BY priority DESC, created_at ASC
+            LIMIT 1
+            """
+        ).fetchone()
+
+    if not row:
+        return {"ran": False, "status": "no_idle_goal", "steps_executed": 0}
+
+    goal = dict(row)
+    goal["checkpoint"] = _json.loads(goal.get("checkpoint_json") or "{}")
+    goal_id = goal["id"]
+
+    # Mark goal as running
+    update_goal(goal_id, status="running", db_path=db_path)
+
+    steps_executed = 0
+    checkpoint = goal["checkpoint"]
+
+    try:
+        for step_index in range(max_steps):
+            result = step_executor(goal=goal, step_index=step_index, checkpoint=checkpoint)
+            steps_executed += 1
+
+            # Persist checkpoint after every step
+            update_goal(goal_id, checkpoint=checkpoint, db_path=db_path)
+
+            if result.get("goal_complete"):
+                update_goal(goal_id, status="completed", db_path=db_path)
+                try:
+                    last_output = (
+                        checkpoint.get("completed_steps", [{}])[-1].get("output", "")
+                        if checkpoint.get("completed_steps")
+                        else result.get("step_output", "")
+                    )
+                except Exception:
+                    last_output = result.get("step_output", "")
+                evaluate_task_rubric(
+                    goal_id=goal_id,
+                    task_description=goal["description"],
+                    output=str(last_output),
+                    execution_error=None,
+                    db_path=db_path,
+                )
+                return {
+                    "ran": True,
+                    "status": "completed",
+                    "steps_executed": steps_executed,
+                }
+
+            if not result.get("step_done"):
+                # Replan happened; continue looping with updated checkpoint
+                continue
+
+    except RuntimeError as exc:
+        err_msg = str(exc)
+        if "Budget exhausted" in err_msg:
+            update_goal(
+                goal_id,
+                status="paused_budget",
+                last_error=err_msg,
+                checkpoint=checkpoint,
+                db_path=db_path,
+            )
+            record_budget_usage("failure", actor="autonomous_planner", goal_id=goal_id, amount=1, db_path=db_path)
+            return {
+                "ran": True,
+                "status": "paused_budget",
+                "steps_executed": steps_executed,
+                "error": err_msg,
+            }
+        # Max replans exceeded or other runtime failure
+        update_goal(
+            goal_id,
+            status="failed",
+            last_error=err_msg,
+            checkpoint=checkpoint,
+            db_path=db_path,
+        )
+        try:
+            last_output = (
+                checkpoint.get("completed_steps", [{}])[-1].get("output", "")
+                if checkpoint.get("completed_steps")
+                else ""
+            )
+        except Exception:
+            last_output = ""
+        evaluate_task_rubric(
+            goal_id=goal_id,
+            task_description=goal["description"],
+            output=str(last_output),
+            execution_error=err_msg,
+            db_path=db_path,
+        )
+        return {
+            "ran": True,
+            "status": "failed",
+            "steps_executed": steps_executed,
+            "error": err_msg,
+        }
+
+    # Exhausted max_steps without completion
+    update_goal(
+        goal_id,
+        status="pending",
+        checkpoint=checkpoint,
+        db_path=db_path,
+    )
+    return {
+        "ran": True,
+        "status": "pending",
+        "steps_executed": steps_executed,
+    }
+
+
+if __name__ == "__main__":
+    pass

@@ -1,6 +1,7 @@
 import os
 import datetime
 import fnmatch
+import importlib
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 import json
@@ -9,7 +10,7 @@ import subprocess
 import urllib.request
 import webbrowser
 from config.settings import ASSETS_DIR, CODE_DIR, SAFE_MODE
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from modules.audit import log_audit_event
 from modules.approval import check_approval
@@ -966,3 +967,89 @@ def capture_desktop_screenshot(filename: str = "") -> str:
         return f"Screenshot saved to {full_path}"
     except Exception as e:
         return f"Screenshot failed: {e}"
+
+
+# --- DYNAMIC TOOL REGISTRY (Tool Synthesis) ---
+
+DYNAMIC_TOOL_REGISTRY: Dict[str, Dict[str, Any]] = {}
+
+
+def register_dynamic_tool(
+    tool_name: str,
+    func: Callable[..., Any],
+    description: str,
+    parameters_schema: Dict[str, Any],
+) -> None:
+    """Registers a validated, test-passing synthesized tool into the live runtime registry."""
+    DYNAMIC_TOOL_REGISTRY[tool_name] = {
+        "name": tool_name,
+        "callable": func,
+        "description": description,
+        "parameters": parameters_schema,
+    }
+
+
+def get_dynamic_tool(tool_name: str) -> Optional[Callable[..., Any]]:
+    entry = DYNAMIC_TOOL_REGISTRY.get(tool_name)
+    return entry["callable"] if entry else None
+
+
+def get_all_dynamic_tool_schemas() -> List[Dict[str, Any]]:
+    """Returns OpenAI/Ollama-compatible tool schemas for all active synthesized tools."""
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": meta["name"],
+                "description": meta["description"],
+                "parameters": meta["parameters"],
+            },
+        }
+        for meta in DYNAMIC_TOOL_REGISTRY.values()
+    ]
+
+
+def hydrate_dynamic_tools(db_path: Optional[str] = None) -> int:
+    """
+    Re-loads all active synthesized tools from SQLite on startup so dynamic capabilities
+    persist across restarts.
+    """
+    target_db = db_path or os.path.join(PROJECT_ROOT, "data", "jarvis_memory.db")
+    if not os.path.exists(target_db):
+        return 0
+
+    conn = sqlite3.connect(target_db)
+    conn.row_factory = sqlite3.Row
+    try:
+        table_exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='dynamic_tools'"
+        ).fetchone()
+        if not table_exists:
+            return 0
+        rows = conn.execute(
+            "SELECT tool_name, description, parameters_schema_json FROM dynamic_tools WHERE status = 'active'"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return 0
+
+    try:
+        dyn_mod = importlib.import_module("modules.dynamic_tools")
+        dyn_mod = importlib.reload(dyn_mod)
+    except Exception:
+        return 0
+
+    loaded = 0
+    for row in rows:
+        fn = getattr(dyn_mod, row["tool_name"], None)
+        if callable(fn):
+            register_dynamic_tool(
+                tool_name=row["tool_name"],
+                func=fn,
+                description=row["description"],
+                parameters_schema=json.loads(row["parameters_schema_json"]),
+            )
+            loaded += 1
+    return loaded

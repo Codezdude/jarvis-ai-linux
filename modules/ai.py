@@ -1736,6 +1736,78 @@ def _dispatch_tool(func_name: str, func_args: dict) -> str:
         return f"Tool error in {func_name}: {tool_err}"
 
 
+_XML_TOOL_CALL_RE = re.compile(
+    r"<(?:dots_function_call|function_call)>(.*?)</(?:dots_function_call|function_call)>",
+    re.DOTALL,
+)
+
+
+def _parse_xml_tool_calls(text: str) -> list[tuple[str, dict]]:
+    """Parse XML-style tool calls from assistant message text.
+
+    Detects ``<dots_function_call>...</dots_function_call>`` and
+    ``<function_call>...</function_call>`` blocks, extracting the tool name
+    and arguments.  Returns a list of ``(tool_name, args_dict)`` tuples.
+    """
+    results: list[tuple[str, dict]] = []
+    if not text:
+        return results
+    for match in _XML_TOOL_CALL_RE.finditer(text):
+        inner = match.group(1).strip()
+        if not inner:
+            continue
+        tool_name, args = _extract_tool_from_xml_inner(inner)
+        if tool_name:
+            results.append((tool_name, args))
+    return results
+
+
+def _extract_tool_from_xml_inner(inner: str) -> tuple[str | None, dict]:
+    """Extract tool name and arguments from the inner content of an XML tool call block."""
+    # Try JSON first
+    try:
+        data = json.loads(inner)
+        if isinstance(data, dict):
+            name = data.get("name") or data.get("function") or data.get("tool")
+            args = data.get("arguments") or data.get("args") or data.get("parameters") or {}
+            if isinstance(name, str) and name:
+                return name, (args if isinstance(args, dict) else {})
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    # Try explicit <name>...</name><arguments>...</arguments> tags
+    name_match = re.search(r"<name>(.*?)</name>", inner, re.DOTALL)
+    args_match = re.search(r"<arguments>(.*?)</arguments>", inner, re.DOTALL)
+    if name_match:
+        name = name_match.group(1).strip()
+        args = {}
+        if args_match:
+            try:
+                args = json.loads(args_match.group(1).strip())
+            except (json.JSONDecodeError, ValueError):
+                args = {}
+        return name, (args if isinstance(args, dict) else {})
+
+    # Try first XML tag as tool name with attributes as args
+    tag_match = re.match(r"<(\w+)([^>]*)>", inner)
+    if tag_match:
+        tool_name = tag_match.group(1)
+        attr_str = tag_match.group(2).strip()
+        args = {}
+        if attr_str:
+            attr_pairs = re.findall(r'(\w+)="([^"]*)"', attr_str)
+            args = {k: v for k, v in attr_pairs}
+        inner_tags = re.findall(r"<(\w+)>(.*?)</\1>", inner, re.DOTALL)
+        for tag, val in inner_tags:
+            if tag not in args:
+                args[tag] = val.strip()
+        return tool_name, args
+
+    # Fallback: treat the whole inner as a tool name
+    name = inner.strip().split()[0] if inner.strip() else None
+    return (name, {}) if name else (None, {})
+
+
 def ask_local_brain_with_tools(query: str, force_provider: str | None = None) -> str:
     """Choose the best available provider for the current request, executing a strict timeout and automatic failover loop.
 
@@ -1853,12 +1925,29 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None) ->
 
             if provider == "kilo":
                 print("[ROUTER] Attempting Kilo AI Gateway...")
-                reply = call_kilo_gateway(history)
+                for step in range(5):
+                    reply = call_kilo_gateway(history)
+                    if not reply:
+                        break
+                    xml_calls = _parse_xml_tool_calls(reply)
+                    if not xml_calls:
+                        reply = cognitive_review_loop(query, reply)
+                        _append_history({"role": "assistant", "content": reply})
+                        set_active_provider(provider)
+                        return _finalize_ai_turn(decision_trace, reply, "success")
+                    _append_history({"role": "assistant", "content": reply})
+                    for tool_name, func_args in xml_calls:
+                        print(f"[KILO AGENT Step {step + 1}/5] Tool: {tool_name}")
+                        tool_result = _dispatch_tool(tool_name, func_args)
+                        decision_trace.tools_invoked.append(tool_name)
+                        _append_history({"role": "tool", "content": str(tool_result), "name": tool_name})
+                    history = _snapshot_history()
+                reply = call_kilo_gateway(history) if history else ""
                 if reply:
                     reply = cognitive_review_loop(query, reply)
                     _append_history({"role": "assistant", "content": reply})
-                    set_active_provider(provider)
-                    return _finalize_ai_turn(decision_trace, reply, "success")
+                set_active_provider(provider)
+                return _finalize_ai_turn(decision_trace, reply or "Completed, Sir.", "success")
 
             if provider == "agy":
                 print("[ROUTER] Attempting Google Subscription (Antigravity CLI)...")

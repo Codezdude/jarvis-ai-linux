@@ -1249,21 +1249,3 @@ def hydrate_dynamic_tools(db_path: Optional[str] = None) -> int:
             )
             loaded += 1
     return loaded
-
-
-# --- INSTAGRAM AUTONOMOUS TOOLS ---
-from modules.instagram_agent import create_and_schedule_post, list_scheduled_posts, process_due_instagram_posts
-
-def schedule_instagram_post(topic: str, caption: str = None) -> str:
-    """Draft AI caption, render 1080x1080 graphic card, and schedule an Instagram post for publishing immediately."""
-    res = create_and_schedule_post(topic=topic, caption=caption, auto_approve=True)
-    return f"Successfully created and scheduled Instagram post about '{topic}': {res}"
-
-def show_instagram_queue() -> str:
-    """List all currently scheduled or published Instagram posts in the local SQLite queue."""
-    posts = list_scheduled_posts()
-    if not posts:
-        return "Instagram post queue is currently empty."
-    lines_out = [f"ID: {p['id']} | Topic: {p['topic']} | Status: {p['status']} | Scheduled For: {p['scheduled_time']}" for p in posts]
-    return "
-".join(lines_out)

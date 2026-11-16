@@ -940,7 +940,7 @@ def extract_user_preferences_from_message(message: str) -> dict:
 
     guidance = extract_structured_preferences(text)
     if guidance:
-        preferences["structured_guidance"] = guidance
+        preferences["structured_guidance"] = json.dumps(guidance, ensure_ascii=False)
 
     return preferences
 

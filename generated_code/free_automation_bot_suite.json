@@ -17,7 +17,7 @@
     {
       "bot": "experiment_review_bot",
       "status": "ok",
-      "experiments_seen": 24,
+      "experiments_seen": 25,
       "summary": "Recent experiment folders were scanned to find reusable patterns and promising concept directions.",
       "entries": [
         {

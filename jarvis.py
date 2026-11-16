@@ -9,10 +9,12 @@ import customtkinter as ctk
 
 from config.settings import SAFE_MODE
 from modules.ai import ask_local_brain_with_tools
+from modules.goals import recover_interrupted_goals
 from modules.listener import ContinuousVoiceListener
 from modules.logger import log_error, log_info
 from modules.memory import init_db, recall_memories, save_interaction, save_memory
 from modules.scheduler import JarvisScheduler
+from modules.tools import hydrate_dynamic_tools
 from modules.ui import JarvisHUD
 from modules.voice import speak, stop_speaking, get_voice_enabled, register_voice_state_callback
 from pynput import keyboard
@@ -158,6 +160,22 @@ def run_cli_loop():
 if __name__ == "__main__":
     log_info("Booting J.A.R.V.I.S. Autonomous Core...")
     init_db()
+
+    # Recover any goals left in a non-terminal state from a previous run
+    try:
+        recovered = recover_interrupted_goals()
+        if recovered:
+            log_info(f"Recovered {recovered} interrupted goal(s) back to pending.")
+    except Exception as e:
+        log_error(f"Goal recovery failed: {e}")
+
+    # Hydrate previously synthesized dynamic tools into the live registry
+    try:
+        loaded = hydrate_dynamic_tools()
+        if loaded:
+            log_info(f"Hydrated {loaded} dynamic tool(s) into registry.")
+    except Exception as e:
+        log_error(f"Dynamic tool hydration failed: {e}")
 
     if "--cli" in sys.argv:
         if get_voice_enabled():

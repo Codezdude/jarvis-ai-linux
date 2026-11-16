@@ -155,3 +155,32 @@ def update_goal(
             )
             conn.commit()
             return cur.rowcount > 0
+
+
+def recover_interrupted_goals(db_path: str = DEFAULT_DB_PATH) -> int:
+    """Resets goals left in a non-terminal state back to 'pending' so the idle scheduler can resume them on the next cycle.
+
+    Returns the number of goals recovered.
+    """
+    init_goals_db(db_path)
+    now = datetime.datetime.now(datetime.UTC).isoformat()
+    with _GOALS_LOCK:
+        with _get_connection(db_path) as conn:
+            cur = conn.execute(
+                """
+                UPDATE goals
+                SET status = 'pending', updated_at = ?
+                WHERE status IN ('running', 'paused_interrupted', 'paused_budget')
+                """,
+                (now,),
+            )
+            conn.commit()
+            recovered = cur.rowcount
+    if recovered:
+        log_audit_event(
+            actor="system",
+            action="goals_recovered",
+            outcome="success",
+            metadata={"recovered_count": recovered},
+        )
+    return recovered

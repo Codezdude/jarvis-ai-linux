@@ -8,9 +8,13 @@ from modules.budget import (
     init_budget_db,
     check_budget,
     record_budget_usage,
+    record_provider_usage,
+    get_daily_cloud_tokens,
+    get_provider_telemetry_summary,
     reset_circuit_breaker,
     register_budget_alert_callback,
 )
+from modules.audit import DecisionTrace
 from modules.preferences import set_preference
 
 
@@ -95,6 +99,78 @@ class TestBudgetAndCircuitBreakers(unittest.TestCase):
 
         events = query_audit_log(limit=5, log_path=self.audit_path)
         self.assertEqual(events[0]["action"], "budget_circuit_reset")
+
+    def test_record_provider_usage_persists_telemetry(self):
+        record_provider_usage(
+            provider="groq",
+            model="llama-3",
+            prompt_tokens=120,
+            completion_tokens=45,
+            latency_ms=812.5,
+            success=True,
+            is_urgent=True,
+            db_path=self.db_path,
+        )
+        # Cloud tokens (non-ollama) accumulate toward the daily cap
+        self.assertEqual(get_daily_cloud_tokens(db_path=self.db_path), 165)
+        summary = get_provider_telemetry_summary(db_path=self.db_path)
+        self.assertTrue(summary)
+        row = summary[0]
+        self.assertEqual(row["provider"], "groq")
+        self.assertEqual(row["prompt_tokens"], 120)
+        self.assertEqual(row["completion_tokens"], 45)
+        self.assertAlmostEqual(float(row["avg_latency_ms"]), 812.5, places=1)
+
+    def test_record_provider_usage_ignores_ollama_for_cloud_cap(self):
+        record_provider_usage(
+            provider="ollama",
+            model="qwen",
+            prompt_tokens=500,
+            completion_tokens=200,
+            latency_ms=300.0,
+            db_path=self.db_path,
+        )
+        self.assertEqual(get_daily_cloud_tokens(db_path=self.db_path), 0)
+
+    def test_finalize_ai_turn_records_latency_and_tokens(self):
+        import modules.ai as ai
+
+        trace = DecisionTrace(actor="autonomous_worker")
+        trace.provider = "groq"
+        trace.model = "llama-3"
+        trace.start_perf = __import__("time").perf_counter()
+        trace.prompt_tokens = 88
+        trace.completion_tokens = 12
+
+        captured = {}
+
+        def _fake_record(**kwargs):
+            captured.update(kwargs)
+
+        with patch("modules.budget.record_provider_usage", side_effect=_fake_record):
+            reply = ai._finalize_ai_turn(trace, "hello", "success")
+
+        self.assertEqual(reply, "hello")
+        self.assertGreaterEqual(trace.latency_ms, 0.0)
+        self.assertEqual(captured["provider"], "groq")
+        self.assertEqual(captured["model"], "llama-3")
+        self.assertEqual(captured["prompt_tokens"], 88)
+        self.assertEqual(captured["completion_tokens"], 12)
+        self.assertTrue(captured["success"])
+
+    def test_finalize_ai_turn_skips_telemetry_for_unknown_provider(self):
+        import modules.ai as ai
+
+        trace = DecisionTrace(actor="autonomous_worker")
+        called = {"n": 0}
+
+        def _fake_record(**kwargs):
+            called["n"] += 1
+
+        with patch("modules.budget.record_provider_usage", side_effect=_fake_record):
+            ai._finalize_ai_turn(trace, "no providers", "error")
+
+        self.assertEqual(called["n"], 0)
 
 
 if __name__ == "__main__":

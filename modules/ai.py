@@ -1514,6 +1514,7 @@ def call_cloudflare_workers_ai(messages: list) -> str:
     )
 
     content = response.choices[0].message.content
+    _set_last_usage(response)
     return (content or "").strip()
 
 
@@ -1534,6 +1535,7 @@ def call_kilo_gateway(messages: list) -> str:
         timeout=5.0,
     )
     content = response.choices[0].message.content
+    _set_last_usage(response)
     return (content or "").strip()
 
 
@@ -1811,6 +1813,59 @@ def get_latest_decision_trace() -> Optional[dict]:
     return _LATEST_DECISION_TRACE.to_dict()
 
 
+_LAST_PROVIDER_USAGE: Dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0}
+
+
+def _set_last_usage(response: Any) -> None:
+    """Record token usage from an OpenAI-compatible response for later trace capture."""
+    try:
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return
+        _LAST_PROVIDER_USAGE["prompt_tokens"] = int(getattr(usage, "prompt_tokens", 0) or 0)
+        _LAST_PROVIDER_USAGE["completion_tokens"] = int(getattr(usage, "completion_tokens", 0) or 0)
+    except Exception:
+        pass
+
+
+def _pop_last_usage(trace: DecisionTrace) -> None:
+    """Copy and reset the module-level last-usage accumulator onto a trace."""
+    if _LAST_PROVIDER_USAGE["prompt_tokens"] or _LAST_PROVIDER_USAGE["completion_tokens"]:
+        trace.prompt_tokens = _LAST_PROVIDER_USAGE["prompt_tokens"]
+        trace.completion_tokens = _LAST_PROVIDER_USAGE["completion_tokens"]
+    _LAST_PROVIDER_USAGE["prompt_tokens"] = 0
+    _LAST_PROVIDER_USAGE["completion_tokens"] = 0
+
+
+def _set_gemini_usage(trace: DecisionTrace, response: Any) -> None:
+    """Read token counts from a google-genai response usage_metadata onto a trace."""
+    try:
+        meta = getattr(response, "usage_metadata", None)
+        if meta is None:
+            return
+        prompt = getattr(meta, "prompt_token_count", None)
+        if prompt is None and isinstance(meta, dict):
+            prompt = meta.get("prompt_token_count", 0)
+        completion = getattr(meta, "candidates_token_count", None)
+        if completion is None and isinstance(meta, dict):
+            completion = meta.get("candidates_token_count", 0)
+        trace.prompt_tokens = int(prompt or 0)
+        trace.completion_tokens = int(completion or 0)
+    except Exception:
+        pass
+
+
+def _set_ollama_usage(trace: DecisionTrace, response: Any) -> None:
+    """Read token counts from an Ollama chat response dict onto a trace."""
+    try:
+        if not isinstance(response, dict):
+            return
+        trace.prompt_tokens = int(response.get("prompt_eval_count", 0) or 0)
+        trace.completion_tokens = int(response.get("eval_count", 0) or 0)
+    except Exception:
+        pass
+
+
 def _extract_groq_tokens(response: Any, kind: str) -> int:
     """Safely read prompt/completion token counts from an OpenAI-compatible response."""
     try:
@@ -1830,6 +1885,8 @@ def _finalize_ai_turn(trace: DecisionTrace, reply: str, outcome: str = "success"
     global _LATEST_DECISION_TRACE
     if trace.start_perf:
         trace.latency_ms = round((time.perf_counter() - trace.start_perf) * 1000.0, 2)
+    if not trace.prompt_tokens and not trace.completion_tokens:
+        _pop_last_usage(trace)
     _LATEST_DECISION_TRACE = trace
     try:
         provider_info = {
@@ -2244,11 +2301,13 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None, is
                     )
                     reply = follow_up.text or str(tool_messages[-1]["content"]) if tool_messages else "Completed, Sir."
                     reply = cognitive_review_loop(query, reply)
+                    _set_gemini_usage(decision_trace, follow_up)
                     _append_history({"role": "assistant", "content": reply})
                     return _finalize_ai_turn(decision_trace, reply, "success")
 
                 reply = response.text or "Completed, Sir."
                 reply = cognitive_review_loop(query, reply)
+                _set_gemini_usage(decision_trace, response)
                 _append_history({"role": "assistant", "content": reply})
                 set_active_provider(provider)
                 return _finalize_ai_turn(decision_trace, reply, "success")
@@ -2277,6 +2336,7 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None, is
                     if not tool_calls:
                         reply = message.get("content", "") or "Completed, Sir."
                         reply = cognitive_review_loop(query, reply)
+                        _set_ollama_usage(decision_trace, response)
                         _append_history({"role": "assistant", "content": reply})
                         set_active_provider(provider)
                         return _finalize_ai_turn(decision_trace, reply, "success")
@@ -2311,6 +2371,7 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None, is
                 )
                 reply = final_response["message"]["content"]
                 reply = cognitive_review_loop(query, reply)
+                _set_ollama_usage(decision_trace, final_response)
                 _append_history({"role": "assistant", "content": reply})
                 set_active_provider(provider)
                 return _finalize_ai_turn(decision_trace, reply, "success")

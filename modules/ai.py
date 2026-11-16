@@ -195,6 +195,7 @@ AVAILABLE_TOOLS = {
     "control_linux_app": control_linux_app,
     "manage_clipboard": manage_clipboard,
     "capture_desktop_screenshot": capture_desktop_screenshot,
+    "safe_write_file": safe_write_file,
 }
 
 # Tool schemas format for OpenAI-compatible providers (Groq & Ollama)
@@ -717,6 +718,23 @@ TOOL_SCHEMAS = [
                 "properties": {
                     "filename": {"type": "string", "description": "Optional output PNG filename"},
                 },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "safe_write_file",
+            "description": "Unified file write gateway. Protected source/test files route through the backup → compile → test → rollback pipeline; non-protected workspace files write directly. Every write is recorded in audit.jsonl.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "filepath": {"type": "string", "description": "Path to the file to write"},
+                    "content": {"type": "string", "description": "The full text content to write"},
+                    "actor": {"type": "string", "description": "Actor performing the write (user, autonomous_worker, self_repair, tool_synthesis)"},
+                    "reason": {"type": "string", "description": "Reason for the file modification"},
+                },
+                "required": ["filepath", "content"],
             },
         },
     },
@@ -1619,9 +1637,50 @@ def _query_needs_tools(query: str) -> bool:
     return any(trigger in q for trigger in action_triggers)
 
 
+_LATEST_DECISION_TRACE: Optional[DecisionTrace] = None
+
+
+def get_latest_decision_trace() -> Optional[dict]:
+    """Return the latest DecisionTrace as a dict for HUD rendering."""
+    if _LATEST_DECISION_TRACE is None:
+        return None
+    return _LATEST_DECISION_TRACE.to_dict()
+
+
+def _finalize_ai_turn(trace: DecisionTrace, reply: str, outcome: str = "success") -> str:
+    """Log the ai_response audit event and store the DecisionTrace for HUD access."""
+    global _LATEST_DECISION_TRACE
+    _LATEST_DECISION_TRACE = trace
+    try:
+        provider_info = {
+            "provider": trace.provider,
+            "model": trace.model,
+            "version": "local",
+        }
+        log_audit_event(
+            actor=trace.actor,
+            action="ai_response",
+            outcome=outcome,
+            memory_ids=trace.memory_ids_retrieved,
+            preference_keys=trace.preference_keys_used,
+            provider_info=provider_info,
+            metadata={
+                "trace_id": trace.trace_id,
+                "tools_invoked": trace.tools_invoked,
+                "audit_event_ids": trace.audit_event_ids,
+                "reply_length": len(reply or ""),
+            },
+        )
+    except Exception:
+        pass
+    return reply
+
+
 def ask_local_brain_with_tools(query: str) -> str:
     """Choose the best available provider for the current request, executing a strict timeout and automatic failover loop."""
     save_user_profile_memory(query)
+
+    decision_trace = DecisionTrace(actor="autonomous_worker")
 
     # Take a thread-safe snapshot of conversation history for this request
     history = _snapshot_history()
@@ -1641,7 +1700,7 @@ def ask_local_brain_with_tools(query: str) -> str:
 
     provider_order = choose_provider_order(query, get_available_providers())
     if not provider_order:
-        return "No AI providers are available in this environment. Configure a model key or install Ollama."
+        return _finalize_ai_turn(decision_trace, "No AI providers are available in this environment. Configure a model key or install Ollama.", "error")
 
     explicit_override = get_explicit_provider_override(query)
     if explicit_override:
@@ -1656,6 +1715,8 @@ def ask_local_brain_with_tools(query: str) -> str:
         if _is_provider_cooling_down(provider):
             continue
         set_active_provider(provider)
+        decision_trace.provider = provider
+        decision_trace.model = provider
         try:
             if provider == "groq":
                 print("[ROUTER] Attempting Groq Cloud (5-step agent loop)...")
@@ -1674,7 +1735,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                         reply = cognitive_review_loop(query, reply)
                         _append_history({"role": "assistant", "content": reply})
                         set_active_provider(provider)
-                        return reply
+                        return _finalize_ai_turn(decision_trace, reply, "success")
 
                     tool_messages = [{"role": "assistant", "content": message.content or "", "tool_calls": message.tool_calls}]
                     for tool_call in message.tool_calls:
@@ -1689,6 +1750,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                                 tool_result = f"Tool error in {func_name}: {tool_err}"
                         else:
                             tool_result = f"Unknown tool: {func_name}"
+                        decision_trace.tools_invoked.append(func_name)
                         tool_messages.append({"role": "tool", "content": str(tool_result), "tool_call_id": tool_call.id})
 
                     with CONVERSATION_LOCK:
@@ -1705,7 +1767,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                 reply = cognitive_review_loop(query, reply)
                 _append_history({"role": "assistant", "content": reply})
                 set_active_provider(provider)
-                return reply
+                return _finalize_ai_turn(decision_trace, reply, "success")
 
             if provider == "cloudflare":
                 print("[ROUTER] Attempting Cloudflare Workers AI...")
@@ -1714,7 +1776,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                     reply = cognitive_review_loop(query, reply)
                     _append_history({"role": "assistant", "content": reply})
                     set_active_provider(provider)
-                    return reply
+                    return _finalize_ai_turn(decision_trace, reply, "success")
 
             if provider == "kilo":
                 print("[ROUTER] Attempting Kilo AI Gateway...")
@@ -1723,7 +1785,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                     reply = cognitive_review_loop(query, reply)
                     _append_history({"role": "assistant", "content": reply})
                     set_active_provider(provider)
-                    return reply
+                    return _finalize_ai_turn(decision_trace, reply, "success")
 
             if provider == "agy":
                 print("[ROUTER] Attempting Google Subscription (Antigravity CLI)...")
@@ -1732,7 +1794,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                     reply = cognitive_review_loop(query, reply)
                     _append_history({"role": "assistant", "content": reply})
                     set_active_provider(provider)
-                    return reply
+                    return _finalize_ai_turn(decision_trace, reply, "success")
 
             if provider == "gemini":
                 print("[ROUTER] Attempting Google Gemini Cloud...")
@@ -1788,13 +1850,13 @@ def ask_local_brain_with_tools(query: str) -> str:
                     reply = follow_up.text or str(tool_messages[-1]["content"]) if tool_messages else "Completed, Sir."
                     reply = cognitive_review_loop(query, reply)
                     _append_history({"role": "assistant", "content": reply})
-                    return reply
+                    return _finalize_ai_turn(decision_trace, reply, "success")
 
                 reply = response.text or "Completed, Sir."
                 reply = cognitive_review_loop(query, reply)
                 _append_history({"role": "assistant", "content": reply})
                 set_active_provider(provider)
-                return reply
+                return _finalize_ai_turn(decision_trace, reply, "success")
 
             if provider == "ollama":
                 print("[ROUTER] Attempting Local Ollama (5-step agent loop)...")
@@ -1820,7 +1882,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                         reply = cognitive_review_loop(query, reply)
                         _append_history({"role": "assistant", "content": reply})
                         set_active_provider(provider)
-                        return reply
+                        return _finalize_ai_turn(decision_trace, reply, "success")
 
                     tool_messages = [dict(message)]
                     for tool_call in tool_calls:
@@ -1852,7 +1914,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                 reply = cognitive_review_loop(query, reply)
                 _append_history({"role": "assistant", "content": reply})
                 set_active_provider(provider)
-                return reply
+                return _finalize_ai_turn(decision_trace, reply, "success")
 
         except Exception as e:
             log_error(f"Provider {provider} failed: {e}")
@@ -1860,4 +1922,4 @@ def ask_local_brain_with_tools(query: str) -> str:
                 _mark_provider_failed(provider)
             continue
 
-    return "No AI provider returned a valid response, Sir."
+    return _finalize_ai_turn(decision_trace, "No AI provider returned a valid response, Sir.", "error")

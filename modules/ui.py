@@ -1,4 +1,4 @@
-from modules.ai import get_active_provider, set_preferred_provider
+from modules.ai import get_active_provider, set_preferred_provider, get_latest_decision_trace
 import math
 import queue
 import threading
@@ -337,6 +337,16 @@ class JarvisHUD:
         else:
             for timestamp, query, response in records:
                 self.history_box.insert("end", f"[{timestamp}]\nUSER: {query}\nJARVIS: {response}\n" + "\u2500"*38 + "\n")
+
+        # Render latest DecisionTrace badge if available
+        trace = get_latest_decision_trace()
+        if trace:
+            self.history_box.insert("end", "\n[TRACE] Last AI decision provenance:\n")
+            self.history_box.insert("end", f"  provider={trace.get('provider', 'unknown')} model={trace.get('model', 'unknown')}\n")
+            self.history_box.insert("end", f"  memory_ids={trace.get('memory_ids_retrieved', [])}\n")
+            self.history_box.insert("end", f"  preference_keys={trace.get('preference_keys_used', [])}\n")
+            self.history_box.insert("end", f"  tools_invoked={trace.get('tools_invoked', [])}\n")
+            self.history_box.insert("end", f"  audit_event_ids={trace.get('audit_event_ids', [])}\n")
         self.history_box.configure(state="disabled")
 
     def set_opacity(self, alpha_val: float):

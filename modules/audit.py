@@ -40,12 +40,14 @@ def log_audit_event(
     preference_keys: Optional[List[str]] = None,
     provider_info: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None,
-    log_path: str = DEFAULT_AUDIT_LOG,
+    log_path: Optional[str] = None,
 ) -> str:
     """
     Appends a single immutable audit record to audit.jsonl.
     Returns the generated event_id.
     """
+    if log_path is None:
+        log_path = DEFAULT_AUDIT_LOG
     event_id = str(uuid.uuid4())
     entry = {
         "event_id": event_id,
@@ -77,9 +79,11 @@ def query_audit_log(
     actor: Optional[str] = None,
     action: Optional[str] = None,
     path_filter: Optional[str] = None,
-    log_path: str = DEFAULT_AUDIT_LOG,
+    log_path: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Reads audit.jsonl in reverse chronological order with optional filtering."""
+    if log_path is None:
+        log_path = DEFAULT_AUDIT_LOG
     if not os.path.exists(log_path):
         return []
 
@@ -111,8 +115,10 @@ def query_audit_log(
     return results
 
 
-def explain_event(event_id: str, log_path: str = DEFAULT_AUDIT_LOG) -> Optional[Dict[str, Any]]:
+def explain_event(event_id: str, log_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """Retrieves a specific audit event by event_id so the agent can cite its reasoning."""
+    if log_path is None:
+        log_path = DEFAULT_AUDIT_LOG
     if not os.path.exists(log_path):
         return None
 

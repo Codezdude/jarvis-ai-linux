@@ -973,3 +973,13 @@
 [2026-11-16 01:23:47] [INFO] JARVIS: Booting J.A.R.V.I.S. Autonomous Core...
 [2026-11-16 01:23:47] [INFO] JARVIS: Starting JARVIS background event scheduler...
 [2026-11-16 01:23:47] [INFO] JARVIS: JARVIS autonomous agent online. Press Ctrl+Alt+J to toggle interface.
+[2026-11-16 01:25:50] [INFO] JARVIS: Initializing Kokoro-82M British Neural Voice Engine...
+[2026-11-16 01:25:51] [INFO] httpx2: HTTP Request: HEAD https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-11-16 01:25:51] [WARNING] huggingface_hub.utils._http: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-11-16 01:25:51] [INFO] httpx2: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/hexgrad/Kokoro-82M/f3ff3571791e39611d31c381e3a41a3af07b4987/config.json?%2Fhexgrad%2FKokoro-82M%2Fresolve%2Fmain%2Fconfig.json=&etag=%2214a726edd3718279eac426630879ff743955b16a%22 "HTTP/1.1 200 OK"
+[2026-11-16 01:25:54] [INFO] httpx2: HTTP Request: HEAD https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/kokoro-v1_0.pth "HTTP/1.1 302 Found"
+[2026-11-16 01:26:17] [INFO] JARVIS: Initializing Kokoro-82M British Neural Voice Engine...
+[2026-11-16 01:26:18] [INFO] httpx2: HTTP Request: HEAD https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+[2026-11-16 01:26:18] [WARNING] huggingface_hub.utils._http: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[2026-11-16 01:26:18] [INFO] httpx2: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/hexgrad/Kokoro-82M/f3ff3571791e39611d31c381e3a41a3af07b4987/config.json?%2Fhexgrad%2FKokoro-82M%2Fresolve%2Fmain%2Fconfig.json=&etag=%2214a726edd3718279eac426630879ff743955b16a%22 "HTTP/1.1 200 OK"
+[2026-11-16 01:26:21] [INFO] httpx2: HTTP Request: HEAD https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/kokoro-v1_0.pth "HTTP/1.1 302 Found"

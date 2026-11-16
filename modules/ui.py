@@ -65,6 +65,11 @@ class JarvisHUD:
         self.root.attributes("-topmost", True)
         self.root.attributes("-alpha", self.current_opacity)
 
+        # X11/Cinnamon focus fix: overrideredirect windows need explicit focus management
+        self.root.bind("<Button-1>", lambda event: self.root.focus_force())
+        self.root.bind("<FocusIn>", lambda event: self.cmd_entry.focus_set() if hasattr(self, 'cmd_entry') else None)
+        self.root.bind("<FocusOut>", lambda event: None)  # prevent focus steal on click-away
+
         width, height = 560, 650
         screen_w = self.root.winfo_screenwidth()
         x_pos = screen_w - width - 40
@@ -175,6 +180,7 @@ class JarvisHUD:
         )
         self.cmd_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
         self.cmd_entry.bind("<Return>", self.on_submit_text)
+        self.cmd_entry.bind("<Button-1>", lambda event: self.cmd_entry.focus_set())
 
         send_btn = ctk.CTkButton(
             input_frame, text="RUN", width=70, height=38,
@@ -409,7 +415,8 @@ class JarvisHUD:
     def show_hud(self):
         self.root.deiconify()
         self.root.lift()
-        self.cmd_entry.focus_force()
+        self.root.focus_force()
+        self.root.after(50, lambda: self.cmd_entry.focus_set())
         self.visible = True
         set_runtime_state("visible", True)
 

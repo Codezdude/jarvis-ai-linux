@@ -89,6 +89,11 @@ def self_update_system(
     if restart_after:
         logs.append("Restarting Jarvis now...")
         print("\n".join(logs), flush=True)
+        try:
+            from modules.ai import _save_session_history_to_disk
+            _save_session_history_to_disk()
+        except Exception:
+            pass
         logging.shutdown()
         os.chdir(PROJECT_DIR)
         script_path = os.path.abspath(sys.argv[0])

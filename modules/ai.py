@@ -701,6 +701,44 @@ CONVERSATION_HISTORY = [
 
 # Thread-safe lock for CONVERSATION_HISTORY mutations and snapshots
 CONVERSATION_LOCK = threading.Lock()
+SESSION_HISTORY_PATH = os.path.join(BASE_DIR, "memory", "session_history.json")
+
+
+def _save_session_history_to_disk() -> None:
+    """Persist non-system conversation turns to memory/session_history.json."""
+    try:
+        os.makedirs(os.path.dirname(SESSION_HISTORY_PATH), exist_ok=True)
+        serializable = []
+        for msg in CONVERSATION_HISTORY:
+            if not isinstance(msg, dict) or msg.get("role") == "system":
+                continue
+            role = msg.get("role")
+            content = msg.get("content", "")
+            if role in ("user", "assistant", "tool") and isinstance(content, str) and content.strip():
+                entry = {"role": role, "content": content}
+                if msg.get("name"):
+                    entry["name"] = msg["name"]
+                serializable.append(entry)
+        with open(SESSION_HISTORY_PATH, "w", encoding="utf-8") as f:
+            json.dump(serializable[-16:], f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[MEMORY] Failed to persist session history: {e}")
+
+
+def _load_session_history_from_disk() -> None:
+    """Reload previous session turns into CONVERSATION_HISTORY on startup."""
+    if not os.path.exists(SESSION_HISTORY_PATH):
+        return
+    try:
+        with open(SESSION_HISTORY_PATH, "r", encoding="utf-8") as f:
+            saved = json.load(f)
+        if isinstance(saved, list) and saved:
+            CONVERSATION_HISTORY.extend(saved[-12:])
+    except Exception as e:
+        print(f"[MEMORY] Failed to load session history: {e}")
+
+
+_load_session_history_from_disk()
 
 
 def _snapshot_history() -> list[dict]:
@@ -710,16 +748,18 @@ def _snapshot_history() -> list[dict]:
 
 
 def _append_history(message: dict) -> None:
-    """Append a single message to CONVERSATION_HISTORY under lock."""
+    """Append a single message to CONVERSATION_HISTORY under lock and persist to disk."""
     with CONVERSATION_LOCK:
         CONVERSATION_HISTORY.append(message)
+        _save_session_history_to_disk()
 
 
 def _replace_history(new_history: list[dict]) -> None:
-    """Replace CONVERSATION_HISTORY entirely under lock."""
+    """Replace CONVERSATION_HISTORY entirely under lock and persist to disk."""
     with CONVERSATION_LOCK:
         CONVERSATION_HISTORY.clear()
         CONVERSATION_HISTORY.extend(new_history)
+        _save_session_history_to_disk()
 
 
 def _clean_message_text(message: dict) -> str:
@@ -1515,44 +1555,50 @@ def ask_local_brain_with_tools(query: str) -> str:
         set_active_provider(provider)
         try:
             if provider == "groq":
-                print("[ROUTER] Attempting Groq Cloud...")
-                response = groq_client.chat.completions.create(
-                    model=CLOUD_MODEL_GROQ,
-                    messages=history,
-                    tools=TOOL_SCHEMAS,
-                    tool_choice="auto",
-                    timeout=12.0,
-                )
-                message = response.choices[0].message
+                print("[ROUTER] Attempting Groq Cloud (5-step agent loop)...")
+                for step in range(5):
+                    response = groq_client.chat.completions.create(
+                        model=CLOUD_MODEL_GROQ,
+                        messages=history,
+                        tools=TOOL_SCHEMAS,
+                        tool_choice="auto",
+                        timeout=15.0,
+                    )
+                    message = response.choices[0].message
 
-                if message.tool_calls:
-                    # Execute all tool calls, not just the first one
+                    if not message.tool_calls:
+                        reply = message.content or "Completed, Sir."
+                        reply = cognitive_review_loop(query, reply)
+                        _append_history({"role": "assistant", "content": reply})
+                        set_active_provider(provider)
+                        return reply
+
                     tool_messages = [{"role": "assistant", "content": message.content or "", "tool_calls": message.tool_calls}]
                     for tool_call in message.tool_calls:
                         func_name = tool_call.function.name
                         func_args = json.loads(tool_call.function.arguments or "{}")
-                        print(f"[GROQ AGENT] Tool selected: {func_name}")
+                        print(f"[GROQ AGENT Step {step + 1}/5] Tool: {func_name}")
 
                         if func_name in AVAILABLE_TOOLS:
-                            tool_result = AVAILABLE_TOOLS[func_name](**func_args) if func_args else AVAILABLE_TOOLS[func_name]()
-                            tool_messages.append({"role": "tool", "content": str(tool_result), "tool_call_id": tool_call.id})
+                            try:
+                                tool_result = AVAILABLE_TOOLS[func_name](**func_args) if func_args else AVAILABLE_TOOLS[func_name]()
+                            except Exception as tool_err:
+                                tool_result = f"Tool error in {func_name}: {tool_err}"
+                        else:
+                            tool_result = f"Unknown tool: {func_name}"
+                        tool_messages.append({"role": "tool", "content": str(tool_result), "tool_call_id": tool_call.id})
 
-                    # Append all assistant + tool messages atomically under lock
                     with CONVERSATION_LOCK:
                         CONVERSATION_HISTORY.extend(tool_messages)
                         history = list(CONVERSATION_HISTORY)
 
-                    final_response = groq_client.chat.completions.create(
-                        model=CLOUD_MODEL_GROQ,
-                        messages=history,
-                        timeout=12.0,
-                    )
-                    reply = final_response.choices[0].message.content
-                    reply = cognitive_review_loop(query, reply)
-                    _append_history({"role": "assistant", "content": reply})
-                    return reply
-
-                reply = message.content
+                # Final synthesis after 5 tool steps
+                final_response = groq_client.chat.completions.create(
+                    model=CLOUD_MODEL_GROQ,
+                    messages=history,
+                    timeout=15.0,
+                )
+                reply = final_response.choices[0].message.content or "Completed multi-step execution, Sir."
                 reply = cognitive_review_loop(query, reply)
                 _append_history({"role": "assistant", "content": reply})
                 set_active_provider(provider)
@@ -1648,45 +1694,56 @@ def ask_local_brain_with_tools(query: str) -> str:
                 return reply
 
             if provider == "ollama":
-                print("[ROUTER] Attempting Local Ollama...")
+                print("[ROUTER] Attempting Local Ollama (5-step agent loop)...")
                 if ollama is None:
                     continue
 
                 ollama_model = _select_ollama_model(query, history)
                 print(f"[ROUTER] Selected Ollama model: {ollama_model}")
 
-                response = ollama.chat(
-                    model=ollama_model,
-                    messages=sanitize_fallback_messages(history),
-                    tools=TOOL_SCHEMAS,
-                )
+                for step in range(5):
+                    response = ollama.chat(
+                        model=ollama_model,
+                        messages=sanitize_fallback_messages(history),
+                        tools=TOOL_SCHEMAS,
+                        options={"num_ctx": 8192},
+                    )
 
-                message = response.get("message", {})
-                tool_calls = message.get("tool_calls")
-                if tool_calls:
-                    # Execute all tool calls, not just the first one
+                    message = response.get("message", {})
+                    tool_calls = message.get("tool_calls")
+                    if not tool_calls:
+                        reply = message.get("content", "") or "Completed, Sir."
+                        reply = cognitive_review_loop(query, reply)
+                        _append_history({"role": "assistant", "content": reply})
+                        set_active_provider(provider)
+                        return reply
+
                     tool_messages = [dict(message)]
                     for tool_call in tool_calls:
                         func_name = tool_call["function"]["name"]
                         raw_args = tool_call["function"].get("arguments", {})
                         func_args = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
-                        print(f"[LOCAL AGENT] Tool selected: {func_name}")
+                        print(f"[LOCAL AGENT Step {step + 1}/5] Tool: {func_name}")
 
                         if func_name in AVAILABLE_TOOLS:
-                            tool_result = AVAILABLE_TOOLS[func_name](**func_args) if func_args else AVAILABLE_TOOLS[func_name]()
-                            tool_messages.append({"role": "tool", "content": str(tool_result), "name": func_name})
+                            try:
+                                tool_result = AVAILABLE_TOOLS[func_name](**func_args) if func_args else AVAILABLE_TOOLS[func_name]()
+                            except Exception as tool_err:
+                                tool_result = f"Tool error in {func_name}: {tool_err}"
+                        else:
+                            tool_result = f"Unknown tool: {func_name}"
+                        tool_messages.append({"role": "tool", "content": str(tool_result), "name": func_name})
 
                     with CONVERSATION_LOCK:
                         CONVERSATION_HISTORY.extend(tool_messages)
                         history = list(CONVERSATION_HISTORY)
 
-                    final_response = ollama.chat(model=ollama_model, messages=sanitize_fallback_messages(history))
-                    reply = final_response["message"]["content"]
-                    reply = cognitive_review_loop(query, reply)
-                    _append_history({"role": "assistant", "content": reply})
-                    return reply
-
-                reply = message.get("content", "")
+                final_response = ollama.chat(
+                    model=ollama_model,
+                    messages=sanitize_fallback_messages(history),
+                    options={"num_ctx": 8192},
+                )
+                reply = final_response["message"]["content"]
                 reply = cognitive_review_loop(query, reply)
                 _append_history({"role": "assistant", "content": reply})
                 set_active_provider(provider)

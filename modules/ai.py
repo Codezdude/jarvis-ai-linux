@@ -1312,13 +1312,14 @@ def trim_and_summarize_conversation(history: list[dict]) -> list[dict]:
     return [merged_system] + kept_recent
 
 
-def ask_local_brain(query: str, force_provider: Optional[str] = None) -> str:
+def ask_local_brain(query: str, force_provider: str | None = None) -> str:
     """Standard text generation using local Ollama with a strict timeout.
 
     Args:
         query: The user query to process.
         force_provider: Accepted for API consistency. This function is always
             local-only, so cloud providers are never invoked regardless of the value.
+
     """
     if ollama is None:
         return "Local Ollama is not installed or unavailable in this environment."
@@ -1724,7 +1725,7 @@ def _dispatch_tool(func_name: str, func_args: dict) -> str:
         return f"Tool error in {func_name}: {tool_err}"
 
 
-def ask_local_brain_with_tools(query: str, force_provider: Optional[str] = None) -> str:
+def ask_local_brain_with_tools(query: str, force_provider: str | None = None) -> str:
     """Choose the best available provider for the current request, executing a strict timeout and automatic failover loop.
 
     Args:
@@ -1732,6 +1733,7 @@ def ask_local_brain_with_tools(query: str, force_provider: Optional[str] = None)
         force_provider: If set (e.g. ``"ollama"``), restrict the failover loop to only
             that provider, skipping cloud providers entirely. Used by autonomous
             background routines that must stay local.
+
     """
     save_user_profile_memory(query)
 

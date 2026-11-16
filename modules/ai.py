@@ -1811,9 +1811,25 @@ def get_latest_decision_trace() -> Optional[dict]:
     return _LATEST_DECISION_TRACE.to_dict()
 
 
+def _extract_groq_tokens(response: Any, kind: str) -> int:
+    """Safely read prompt/completion token counts from an OpenAI-compatible response."""
+    try:
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return 0
+        value = getattr(usage, kind + "_tokens", 0) if kind else 0
+        if isinstance(value, dict):
+            value = value.get(kind + "_tokens", 0)
+        return int(value or 0)
+    except Exception:
+        return 0
+
+
 def _finalize_ai_turn(trace: DecisionTrace, reply: str, outcome: str = "success") -> str:
     """Log the ai_response audit event and store the DecisionTrace for HUD access."""
     global _LATEST_DECISION_TRACE
+    if trace.start_perf:
+        trace.latency_ms = round((time.perf_counter() - trace.start_perf) * 1000.0, 2)
     _LATEST_DECISION_TRACE = trace
     try:
         provider_info = {
@@ -1833,10 +1849,29 @@ def _finalize_ai_turn(trace: DecisionTrace, reply: str, outcome: str = "success"
                 "tools_invoked": trace.tools_invoked,
                 "audit_event_ids": trace.audit_event_ids,
                 "reply_length": len(reply or ""),
+                "latency_ms": trace.latency_ms,
+                "prompt_tokens": trace.prompt_tokens,
+                "completion_tokens": trace.completion_tokens,
             },
         )
     except Exception:
         pass
+    # Persist per-provider token/latency telemetry (skipped for the no-provider error path).
+    if trace.provider and trace.provider != "unknown":
+        try:
+            from modules.budget import record_provider_usage
+
+            record_provider_usage(
+                provider=trace.provider,
+                model=trace.model or "",
+                prompt_tokens=trace.prompt_tokens,
+                completion_tokens=trace.completion_tokens,
+                latency_ms=trace.latency_ms,
+                success=(outcome == "success"),
+                is_urgent=trace.is_urgent,
+            )
+        except Exception:
+            pass
     return reply
 
 
@@ -1957,6 +1992,8 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None, is
     save_user_profile_memory(query)
 
     decision_trace = DecisionTrace(actor="autonomous_worker")
+    decision_trace.start_perf = time.perf_counter()
+    decision_trace.is_urgent = bool(is_urgent)
 
     # Inject active user/AI preferences into the system prompt and record them in the trace.
     pref_block, traced_pref_keys = format_preferences_for_prompt()
@@ -2052,6 +2089,8 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None, is
                     if not message.tool_calls:
                         reply = message.content or "Completed, Sir."
                         reply = cognitive_review_loop(query, reply)
+                        decision_trace.prompt_tokens = _extract_groq_tokens(response, "prompt")
+                        decision_trace.completion_tokens = _extract_groq_tokens(response, "completion")
                         _append_history({"role": "assistant", "content": reply})
                         set_active_provider(provider)
                         return _finalize_ai_turn(decision_trace, reply, "success")
@@ -2086,6 +2125,8 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None, is
                 )
                 reply = final_response.choices[0].message.content or "Completed multi-step execution, Sir."
                 reply = cognitive_review_loop(query, reply)
+                decision_trace.prompt_tokens = _extract_groq_tokens(final_response, "prompt")
+                decision_trace.completion_tokens = _extract_groq_tokens(final_response, "completion")
                 _append_history({"role": "assistant", "content": reply})
                 set_active_provider(provider)
                 return _finalize_ai_turn(decision_trace, reply, "success")

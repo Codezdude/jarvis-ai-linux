@@ -26,6 +26,11 @@ class DecisionTrace:
     preference_keys_used: List[str] = field(default_factory=list)
     tools_invoked: List[str] = field(default_factory=list)
     audit_event_ids: List[str] = field(default_factory=list)
+    start_perf: float = 0.0
+    latency_ms: float = 0.0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    is_urgent: bool = True
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

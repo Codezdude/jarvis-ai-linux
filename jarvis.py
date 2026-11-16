@@ -1,5 +1,6 @@
 """J.A.R.V.I.S. Autonomous Core - Desktop entry point with HUD, CLI, wake-word listener, and speech interrupt."""
 
+import os
 import re
 import sys
 import threading
@@ -15,6 +16,7 @@ from modules.logger import log_error, log_info
 from modules.memory import init_db, recall_memories, save_interaction, save_memory
 from modules.scheduler import JarvisScheduler
 from modules.tools import hydrate_dynamic_tools
+from modules.self_update import self_update_system
 from modules.ui import JarvisHUD
 from modules.voice import speak, stop_speaking, get_voice_enabled, register_voice_state_callback
 from pynput import keyboard
@@ -179,6 +181,43 @@ def run_cli_loop():
             break
 
 
+def check_auto_update() -> None:
+    """Background startup check: if auto-update is enabled, fetch and pull new code."""
+    import subprocess
+    from modules.memory import get_preference
+
+    enabled, _ = get_preference("auto_update_on_startup", "true")
+    if str(enabled).strip().lower() not in ("1", "true", "yes", "on"):
+        log_info("Auto-update on startup is disabled by user preference.")
+        return
+
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    try:
+        fetch = subprocess.run(
+            ["git", "fetch", "origin", "main"],
+            cwd=project_dir, capture_output=True, text=True, timeout=15,
+        )
+        if fetch.returncode != 0:
+            log_error(f"Auto-update git fetch failed: {fetch.stderr.strip()}")
+            return
+
+        # Check if local is behind remote
+        rev = subprocess.run(
+            ["git", "rev-list", "--count", "HEAD..origin/main"],
+            cwd=project_dir, capture_output=True, text=True, timeout=10,
+        )
+        behind = int(rev.stdout.strip()) if rev.returncode == 0 and rev.stdout.strip().isdigit() else 0
+        if behind == 0:
+            log_info("Auto-update: already up to date.")
+            return
+
+        log_info(f"Auto-update: {behind} new commit(s) available. Pulling...")
+        result = self_update_system(pull_git=True, restart_after=False)
+        log_info(f"Auto-update result:\n{result}")
+    except Exception as e:
+        log_error(f"Auto-update check failed: {e}")
+
+
 if __name__ == "__main__":
     log_info("Booting J.A.R.V.I.S. Autonomous Core...")
     init_db()
@@ -204,6 +243,9 @@ if __name__ == "__main__":
             log_info(f"Hydrated {loaded} dynamic tool(s) into registry.")
     except Exception as e:
         log_error(f"Dynamic tool hydration failed: {e}")
+
+    # Auto-update check in background (non-blocking, controlled by user preference)
+    threading.Thread(target=check_auto_update, daemon=True, name="AutoUpdateCheck").start()
 
     if "--cli" in sys.argv:
         if get_voice_enabled():

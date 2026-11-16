@@ -21,6 +21,9 @@ from modules.memory import (
     save_interaction,
     save_preference,
     set_runtime_state,
+    save_chat_message,
+    delete_history_from_id,
+    list_sessions,
 )
 
 # Configure global theme styling
@@ -64,6 +67,9 @@ class JarvisHUD:
         else:
             pass
         self._normal_geometry = None
+        self._editing_message_id = None
+        self._rendered_messages = []
+        self._current_session_id = "default"
         set_runtime_state("voice_enabled", self.voice_enabled)
         set_runtime_state("show_telemetry", self.show_telemetry)
         set_runtime_state("fullscreen_mode", self.fullscreen_mode)
@@ -112,6 +118,21 @@ class JarvisHUD:
 
         actions = ctk.CTkFrame(header, fg_color="transparent")
         actions.pack(side="right", padx=(0, 10), pady=7)
+
+        new_chat_btn = ctk.CTkButton(
+            actions, text="+", width=30, height=28, fg_color="transparent",
+            text_color="#9ef0c4", hover_color="#173b2f", font=("DejaVu Sans", 14, "bold"),
+            command=self._new_chat
+        )
+        new_chat_btn.pack(side="right", padx=(0, 6))
+
+        self.session_menu = ctk.CTkOptionMenu(
+            actions, values=["default"], width=90, height=28,
+            fg_color="#122738", text_color="#dbeeff",
+            button_color="#183a59", dropdown_fg_color="#071018", dropdown_text_color="#dbeeff",
+            font=("DejaVu Sans", 9), command=self._switch_session,
+        )
+        self.session_menu.pack(side="right", padx=(0, 6))
 
         self.settings_btn = ctk.CTkButton(
             actions, text="\u2699", width=30, height=28, fg_color="transparent",
@@ -217,6 +238,8 @@ class JarvisHUD:
         self.cmd_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
         self.cmd_entry.bind("<Return>", self.on_submit_text)
         self.cmd_entry.bind("<Button-1>", lambda event: self.cmd_entry.focus_set())
+        self.cmd_entry.bind("<Up>", self._recall_last_user_message)
+        self.cmd_entry.bind("<Escape>", self._cancel_edit_message)
 
         send_btn = ctk.CTkButton(
             input_frame, text="RUN", width=70, height=38,
@@ -386,6 +409,14 @@ class JarvisHUD:
         ).pack(fill="x", padx=8, pady=(4, 10))
 
         self.refresh_provider_status()
+        self._hydrate_chat_history()
+        try:
+            sessions = list_sessions()
+            if sessions:
+                self.session_menu.configure(values=sessions)
+                self.session_menu.set(self._current_session_id)
+        except Exception:
+            pass
         self.animate_rings()
         self.process_ui_queue()
 
@@ -489,6 +520,76 @@ class JarvisHUD:
         if self.resume_callback is not None:
             self.resume_callback()
         self.update_ui("RESUMED", "idle", "Autonomous subsystems resumed.")
+
+    def _append_chat_bubble(self, role, content, message_id=None):
+        """Append a role/content bubble to the response box and track it for edit/resend."""
+        self.response_box.configure(state="normal")
+        who = "YOU" if role == "user" else "JARVIS"
+        marker = f"{who}: {content}\n" + "\u2500" * 30 + "\n"
+        self.response_box.insert("end", marker)
+        self.response_box.see("end")
+        self.response_box.configure(state="disabled")
+        self._rendered_messages.append(
+            {"id": message_id, "role": role, "content": content, "widget": None}
+        )
+
+    def _hydrate_chat_history(self):
+        """Load prior messages for the current session into the response box on boot."""
+        try:
+            history = get_recent_history(limit=40, session_id=self._current_session_id)
+        except Exception:
+            history = []
+        if not history:
+            return
+        self.response_box.configure(state="normal")
+        self.response_box.delete("0.0", "end")
+        self.response_box.configure(state="disabled")
+        self._rendered_messages = []
+        for item in history:
+            self._append_chat_bubble(
+                role=item.get("role", "assistant"),
+                content=item.get("content", ""),
+                message_id=item.get("id"),
+            )
+
+    def _begin_edit_message(self, message_id, content):
+        """Load a prior user message back into the input for editing/resending."""
+        self._editing_message_id = message_id
+        self.cmd_entry.delete(0, "end")
+        self.cmd_entry.insert(0, content)
+        self.cmd_entry.focus_set()
+
+    def _cancel_edit_message(self, event=None):
+        self._editing_message_id = None
+        self.cmd_entry.delete(0, "end")
+
+    def _recall_last_user_message(self, event=None):
+        """Recall the last user message when the input is empty (Up arrow)."""
+        if self.cmd_entry.get().strip():
+            return "break"
+        for item in reversed(self._rendered_messages):
+            if item["role"] == "user":
+                self._begin_edit_message(item["id"], item["content"])
+                break
+        return "break"
+
+    def _new_chat(self):
+        """Start a fresh timestamped session and reset the view."""
+        import time as _time
+
+        self._current_session_id = f"chat_{int(_time.time())}"
+        self._rendered_messages = []
+        self._editing_message_id = None
+        self.response_box.configure(state="normal")
+        self.response_box.delete("0.0", "end")
+        self.response_box.configure(state="disabled")
+        self.update_ui("NEW CHAT", "idle", f"Started session {self._current_session_id}.")
+
+    def _switch_session(self, session_id):
+        """Switch the active chat session and reload its history."""
+        self._current_session_id = session_id or "default"
+        self._hydrate_chat_history()
+        self.update_ui("SESSION", "idle", f"Switched to {self._current_session_id}.")
 
     def load_history_data(self):
         records = get_recent_history(limit=15)
@@ -665,10 +766,11 @@ class JarvisHUD:
             set_runtime_state("ui_state", self.state)
             self.refresh_provider_status()
             if reply_text is not None:
-                self.response_box.configure(state="normal")
-                self.response_box.delete("0.0", "end")
-                self.response_box.insert("0.0", reply_text)
-                self.response_box.configure(state="disabled")
+                # "> query" echoes are user bubbles; everything else is an assistant bubble
+                if reply_text.startswith("> "):
+                    self._append_chat_bubble("user", reply_text[2:])
+                else:
+                    self._append_chat_bubble("assistant", reply_text)
         if self.visible and not self.ui_queue.empty():
             self._queue_job = self.root.after(80, self.process_ui_queue)
 
@@ -676,6 +778,24 @@ class JarvisHUD:
         query = self.cmd_entry.get().strip()
         if not query:
             return
+        # Handle edit/resend: rewind history from the edited message onward
+        if self._editing_message_id is not None:
+            target_id = self._editing_message_id
+            try:
+                delete_history_from_id(target_id, session_id=self._current_session_id)
+            except Exception:
+                pass
+            cutoff = next(
+                (i for i, m in enumerate(self._rendered_messages) if m["id"] == target_id),
+                None,
+            )
+            if cutoff is not None:
+                self._rendered_messages = self._rendered_messages[:cutoff]
+            self._editing_message_id = None
+            try:
+                self._hydrate_chat_history()
+            except Exception:
+                pass
         self.cmd_entry.delete(0, "end")
 
         self.update_ui("PROCESSING", "thinking", f"> {query}")

@@ -22,5 +22,13 @@
   {
     "role": "user",
     "content": "can you check yourself and note areas on improvemnt"
+  },
+  {
+    "role": "user",
+    "content": "hi"
+  },
+  {
+    "role": "user",
+    "content": "hi"
   }
 ]

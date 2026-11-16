@@ -30,6 +30,7 @@ except ImportError:  # pragma: no cover - optional dependency for cloud fallback
     genai = None
 
 from config.settings import MODEL_NAME
+from modules.logger import log_error
 from modules.automation import (
     content_idea_bot,
     experiment_review_bot,
@@ -145,7 +146,7 @@ if not AGY_PATH or not os.path.exists(AGY_PATH):
     AGY_PATH = ""
 
 # Initialize clients dynamically
-groq_client = Groq(api_key=GROQ_API_KEY, timeout=12.0) if GROQ_API_KEY and Groq else None
+groq_client = Groq(api_key=GROQ_API_KEY, timeout=5.0) if GROQ_API_KEY and Groq else None
 gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY and genai else None
 
 # Define available tools that the models can execute autonomously
@@ -1348,13 +1349,13 @@ def call_cloudflare_workers_ai(messages: list) -> str:
     client = OpenAI(
         base_url=f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
         api_key=api_token,
-        timeout=12.0,
+        timeout=5.0,
     )
 
     response = client.chat.completions.create(
         model=CLOUDFLARE_MODEL,
         messages=sanitize_fallback_messages(messages),
-        timeout=12.0,
+        timeout=5.0,
     )
 
     content = response.choices[0].message.content
@@ -1370,12 +1371,12 @@ def call_kilo_gateway(messages: list) -> str:
     client = OpenAI(
         base_url="https://ai-gateway.kilo.ai/api/v1",
         api_key=api_key,
-        timeout=12.0,
+        timeout=5.0,
     )
     response = client.chat.completions.create(
         model="kilo-auto/free",
         messages=sanitize_fallback_messages(messages),
-        timeout=12.0,
+        timeout=5.0,
     )
     content = response.choices[0].message.content
     return (content or "").strip()
@@ -1585,6 +1586,37 @@ def _select_ollama_model(query: str, history: list[dict] | None = None) -> str:
     return "llama3.2:3b"
 
 
+_PROVIDER_COOLDOWN: dict[str, float] = {}
+_COOLDOWN_SECONDS = 120.0
+
+
+def _is_provider_cooling_down(provider: str) -> bool:
+    until = _PROVIDER_COOLDOWN.get(provider, 0.0)
+    if time.time() < until:
+        return True
+    _PROVIDER_COOLDOWN.pop(provider, None)
+    return False
+
+
+def _mark_provider_failed(provider: str) -> None:
+    _PROVIDER_COOLDOWN[provider] = time.time() + _COOLDOWN_SECONDS
+
+
+def _query_needs_tools(query: str) -> bool:
+    """Only attach the 35 JSON tool schemas when the request likely needs an external action."""
+    q = (query or "").lower()
+    action_triggers = (
+        "file", "read", "write", "edit", "save", "folder", "directory", "search",
+        "find", "code", "bug", "fix", "test", "syntax", "log", "update", "upgrade",
+        "restart", "rollback", "reload", "cpu", "ram", "battery", "diagnostic",
+        "system", "time", "date", "open", "website", "url", "web", "browser",
+        "volume", "mute", "unmute", "sound", "audio", "app", "close", "focus",
+        "clipboard", "copy", "paste", "screenshot", "screen", "image", "flyer",
+        "post", "instagram", "brand", "analytics", "memory", "remember", "experiment",
+    )
+    return any(trigger in q for trigger in action_triggers)
+
+
 def ask_local_brain_with_tools(query: str) -> str:
     """Choose the best available provider for the current request, executing a strict timeout and automatic failover loop."""
     save_user_profile_memory(query)
@@ -1615,7 +1647,12 @@ def ask_local_brain_with_tools(query: str) -> str:
 
     print(f"[ROUTER] Request-aware provider order (Timeout: 12s per tier): {provider_order}")
 
+    use_tools = _query_needs_tools(query)
+    active_tools = TOOL_SCHEMAS if use_tools else None
+
     for provider in provider_order:
+        if _is_provider_cooling_down(provider):
+            continue
         set_active_provider(provider)
         try:
             if provider == "groq":
@@ -1624,9 +1661,9 @@ def ask_local_brain_with_tools(query: str) -> str:
                     response = groq_client.chat.completions.create(
                         model=CLOUD_MODEL_GROQ,
                         messages=history,
-                        tools=TOOL_SCHEMAS,
-                        tool_choice="auto",
-                        timeout=15.0,
+                        tools=active_tools,
+                        tool_choice="auto" if active_tools else None,
+                        timeout=6.0,
                     )
                     message = response.choices[0].message
 
@@ -1660,7 +1697,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                 final_response = groq_client.chat.completions.create(
                     model=CLOUD_MODEL_GROQ,
                     messages=history,
-                    timeout=15.0,
+                    timeout=6.0,
                 )
                 reply = final_response.choices[0].message.content or "Completed multi-step execution, Sir."
                 reply = cognitive_review_loop(query, reply)
@@ -1769,8 +1806,9 @@ def ask_local_brain_with_tools(query: str) -> str:
                     response = ollama.chat(
                         model=ollama_model,
                         messages=sanitize_fallback_messages(history),
-                        tools=TOOL_SCHEMAS,
-                        options={"num_ctx": 8192},
+                        tools=active_tools,
+                        keep_alive="30m",
+                        options={"num_ctx": 2048},
                     )
 
                     message = response.get("message", {})
@@ -1805,7 +1843,8 @@ def ask_local_brain_with_tools(query: str) -> str:
                 final_response = ollama.chat(
                     model=ollama_model,
                     messages=sanitize_fallback_messages(history),
-                    options={"num_ctx": 8192},
+                    keep_alive="30m",
+                    options={"num_ctx": 2048},
                 )
                 reply = final_response["message"]["content"]
                 reply = cognitive_review_loop(query, reply)
@@ -1815,6 +1854,8 @@ def ask_local_brain_with_tools(query: str) -> str:
 
         except Exception as e:
             log_error(f"Provider {provider} failed: {e}")
+            if provider != "ollama":
+                _mark_provider_failed(provider)
             continue
 
     return "No AI provider returned a valid response, Sir."

@@ -57,7 +57,7 @@ def cognitive_review_loop(query: str, raw_response: str) -> str:
     critique_text = "; ".join(corrections) if corrections else "No material critique needed."
     final_value = raw_response
 
-    if corrections:
+    if False and corrections:
         refinement_prompt = (
             f"Original Query: {query}\n"
             f"Initial Draft: {raw_response}\n"

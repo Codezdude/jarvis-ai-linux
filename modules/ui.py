@@ -8,6 +8,8 @@ import customtkinter as ctk
 import psutil
 
 from modules.logger import log_error, log_info
+from modules.approval import register_ui_prompt_callback
+from modules.budget import register_budget_alert_callback
 from modules.voice import speak, set_voice_enabled, get_voice_enabled
 from modules.memory import (
     get_preference,

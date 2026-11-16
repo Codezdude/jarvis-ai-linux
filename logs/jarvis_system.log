@@ -1387,3 +1387,5 @@
 [2026-11-16 08:33:52] [INFO] httpx2: HTTP Request: GET http://testserver/health "HTTP/1.1 401 Unauthorized"
 [2026-11-16 08:33:52] [INFO] httpx2: HTTP Request: GET http://testserver/health "HTTP/1.1 200 OK"
 [2026-11-16 08:33:53] [INFO] JARVIS: Generated image at /home/millennium/jarvis_project/assets/tech_ir_test.png
+[2026-11-16 08:36:54] [INFO] httpx: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+[2026-11-16 08:38:20] [INFO] httpx: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"

@@ -3,3 +3,7 @@
 [CYCLE 2] Target: modules/ai.py | Change: Imported get_all_dynamic_tool_schemas from modules.tools; merged dynamic tool schemas into active_tools in ask_local_brain_with_tools() so synthesized tools are visible to the AI router | Tests: PASS 37 (baseline 37) | Installs: none | Next: Cycle 3 - check modules/scheduler.py for run_reactive_tick() and post-goal evaluate_task_rubric()/mine_failure_corpus() wiring
 
 [CYCLE 3] Target: modules/scheduler.py | Change: Wired mine_failure_corpus() into all return paths of process_one_idle_goal() so recurring failure patterns are mined during every idle cycle | Tests: PASS 37 (baseline 37) | Installs: none | Next: Cycle 4 - check modules/ui.py for HUD STOP button, register_ui_prompt_callback(), register_budget_alert_callback(), DecisionTrace display, weekly audit/reflections review views
+
+[CYCLE 4] Target: modules/ui.py | Change: Registered register_ui_prompt_callback() and register_budget_alert_callback() in JarvisHUD.__init__ with handler methods _on_ui_prompt() and _on_budget_alert() | Tests: PASS 37 (baseline 37) | Installs: none | Next: Cycle 5 - add weekly audit/reflections review panel to HUD
+
+[CYCLE 5] Target: modules/ui.py | Change: Added weekly review panel with toggle button, load_review_data() displaying unreviewed failures via get_reflections_for_review(), and mark_reviewed() via mark_reflection_reviewed() | Tests: PASS 37 (baseline 37) | Installs: none | Next: Cycle 6 - add HUD STOP button wiring + request_stop() function, or run_reactive_tick() in scheduler

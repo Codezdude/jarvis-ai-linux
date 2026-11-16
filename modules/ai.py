@@ -87,6 +87,7 @@ from modules.tools import (
     manage_clipboard,
     capture_desktop_screenshot,
     get_all_dynamic_tool_schemas,
+    get_dynamic_tool,
 )
 from modules.workspace_growth import (
     append_workspace_growth_log,
@@ -1701,6 +1702,22 @@ def _finalize_ai_turn(trace: DecisionTrace, reply: str, outcome: str = "success"
     return reply
 
 
+def _dispatch_tool(func_name: str, func_args: dict) -> str:
+    """Execute a tool by name, checking static tools first then dynamic tools.
+
+    Returns a structured error string if the tool is unknown or execution fails.
+    """
+    handler = AVAILABLE_TOOLS.get(func_name)
+    if handler is None:
+        handler = get_dynamic_tool(func_name)
+    if handler is None:
+        return f"Unknown tool: {func_name}"
+    try:
+        return handler(**func_args) if func_args else handler()
+    except Exception as tool_err:
+        return f"Tool error in {func_name}: {tool_err}"
+
+
 def ask_local_brain_with_tools(query: str) -> str:
     """Choose the best available provider for the current request, executing a strict timeout and automatic failover loop."""
     save_user_profile_memory(query)
@@ -1775,13 +1792,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                         func_args = json.loads(tool_call.function.arguments or "{}")
                         print(f"[GROQ AGENT Step {step + 1}/5] Tool: {func_name}")
 
-                        if func_name in AVAILABLE_TOOLS:
-                            try:
-                                tool_result = AVAILABLE_TOOLS[func_name](**func_args) if func_args else AVAILABLE_TOOLS[func_name]()
-                            except Exception as tool_err:
-                                tool_result = f"Tool error in {func_name}: {tool_err}"
-                        else:
-                            tool_result = f"Unknown tool: {func_name}"
+                        tool_result = _dispatch_tool(func_name, func_args)
                         decision_trace.tools_invoked.append(func_name)
                         tool_messages.append({"role": "tool", "content": str(tool_result), "tool_call_id": tool_call.id})
 
@@ -1923,13 +1934,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                         func_args = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
                         print(f"[LOCAL AGENT Step {step + 1}/5] Tool: {func_name}")
 
-                        if func_name in AVAILABLE_TOOLS:
-                            try:
-                                tool_result = AVAILABLE_TOOLS[func_name](**func_args) if func_args else AVAILABLE_TOOLS[func_name]()
-                            except Exception as tool_err:
-                                tool_result = f"Tool error in {func_name}: {tool_err}"
-                        else:
-                            tool_result = f"Unknown tool: {func_name}"
+                        tool_result = _dispatch_tool(func_name, func_args)
                         tool_messages.append({"role": "tool", "content": str(tool_result), "name": func_name})
 
                     with CONVERSATION_LOCK:

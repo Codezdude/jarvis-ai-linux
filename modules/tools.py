@@ -1012,6 +1012,62 @@ def get_all_dynamic_tool_schemas() -> List[Dict[str, Any]]:
     ]
 
 
+def get_relevant_dynamic_tool_schemas(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    """Return the top_k dynamic tool schemas most relevant to a query.
+
+    Scores by token overlap + character trigram cosine similarity between the
+    query and ``f"{name} {description}"``. Falls back to the most recently
+    registered tools when all scores are zero.
+    """
+    import math
+    from collections import Counter
+
+    registry = list(DYNAMIC_TOOL_REGISTRY.values())
+    if not registry:
+        return []
+
+    def _trigrams(text: str) -> Counter:
+        padded = f"  {(text or '').lower()}  "
+        return Counter(padded[i:i + 3] for i in range(len(padded) - 2))
+
+    q_trigrams = _trigrams(query)
+    q_tokens = set((query or "").lower().split())
+    q_norm = math.sqrt(sum(v * v for v in q_trigrams.values())) or 1.0
+
+    scored = []
+    for meta in registry:
+        doc = f"{meta['name']} {meta['description']}"
+        d_trigrams = _trigrams(doc)
+        # cosine over trigrams
+        common = set(q_trigrams) & set(d_trigrams)
+        dot = sum(q_trigrams[g] * d_trigrams[g] for g in common)
+        d_norm = math.sqrt(sum(v * v for v in d_trigrams.values())) or 1.0
+        cosine = dot / (q_norm * d_norm)
+        # token overlap
+        d_tokens = set(doc.lower().split())
+        overlap = len(q_tokens & d_tokens)
+        scored.append((cosine + overlap * 0.1, meta))
+
+    if all(s == 0 for s, _ in scored):
+        # Fallback: most recently registered
+        selected = registry[-top_k:]
+    else:
+        scored.sort(key=lambda t: t[0], reverse=True)
+        selected = [meta for _, meta in scored[:top_k]]
+
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": meta["name"],
+                "description": meta["description"],
+                "parameters": meta["parameters"],
+            },
+        }
+        for meta in selected
+    ]
+
+
 def hydrate_dynamic_tools(db_path: Optional[str] = None) -> int:
     """
     Re-loads all active synthesized tools from SQLite on startup so dynamic capabilities

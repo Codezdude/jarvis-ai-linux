@@ -88,6 +88,7 @@ from modules.tools import (
     capture_desktop_screenshot,
     get_all_dynamic_tool_schemas,
     get_dynamic_tool,
+    get_relevant_dynamic_tool_schemas,
 )
 from modules.workspace_growth import (
     append_workspace_growth_log,
@@ -1387,6 +1388,50 @@ def ask_local_brain(query: str, force_provider: str | None = None, is_urgent: bo
         return f"Local brain error: {e}"
 
 
+def stream_local_brain(prompt: str, history: list[dict] | None = None, force_provider: str | None = None):
+    """Yield text chunks from a streaming provider, falling back to a single full response.
+
+    Uses Ollama ``/api/chat`` with ``stream=True`` when available, otherwise
+    yields the full ``ask_local_brain(...)`` response as one chunk.
+    """
+    import json as _json
+    import urllib.request
+
+    messages = list(history) if history else [{"role": "user", "content": prompt}]
+
+    # Try Ollama streaming first
+    if ollama is not None:
+        try:
+            payload = _json.dumps(
+                {"model": MODEL_NAME, "messages": messages, "stream": True}
+            ).encode("utf-8")
+            req = urllib.request.Request(
+                "http://localhost:11434/api/chat",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                for raw_line in resp:
+                    line = raw_line.decode("utf-8").strip()
+                    if not line:
+                        continue
+                    try:
+                        data = _json.loads(line)
+                    except ValueError:
+                        continue
+                    chunk = data.get("message", {}).get("content", "")
+                    if chunk:
+                        yield chunk
+                    if data.get("done"):
+                        break
+            return
+        except Exception:
+            pass
+
+    # Fallback: single full response
+    yield ask_local_brain(prompt, force_provider=force_provider)
+
+
 def call_antigravity_cli(messages: list) -> str:
     """Route the recent conversation through the local AGY CLI using a compact prompt format."""
     if not AGY_PATH or not os.path.exists(AGY_PATH):
@@ -1800,6 +1845,22 @@ def _dispatch_tool(func_name: str, func_args: dict) -> str:
 
     Returns a structured error string if the tool is unknown or execution fails.
     """
+    # MCP-namespaced tools route to the MCP bridge
+    try:
+        from modules.mcp_bridge import call_mcp_tool, is_mcp_tool
+
+        if is_mcp_tool(func_name):
+            result = call_mcp_tool(func_name, func_args, timeout_sec=15)
+            log_audit_event(
+                actor="autonomous_worker",
+                action="mcp_tool_call",
+                outcome="success",
+                metadata={"tool": func_name},
+            )
+            return result
+    except Exception:
+        pass
+
     handler = AVAILABLE_TOOLS.get(func_name)
     if handler is None:
         handler = get_dynamic_tool(func_name)
@@ -1956,7 +2017,16 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None, is
     print(f"[ROUTER] Request-aware provider order (Timeout: 12s per tier): {provider_order}")
 
     use_tools = should_attach_tools(query)
-    active_tools = (TOOL_SCHEMAS + get_all_dynamic_tool_schemas()) if use_tools else None
+    active_tools = (TOOL_SCHEMAS + get_relevant_dynamic_tool_schemas(query, top_k=5)) if use_tools else None
+    if use_tools:
+        try:
+            from modules.mcp_bridge import get_mcp_tool_schemas
+
+            mcp_schemas = get_mcp_tool_schemas()
+            if mcp_schemas:
+                active_tools = (active_tools or []) + mcp_schemas[:5]
+        except Exception:
+            pass
 
     for provider in provider_order:
         if _is_provider_cooling_down(provider):

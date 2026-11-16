@@ -244,6 +244,16 @@ if __name__ == "__main__":
     except Exception as e:
         log_error(f"Dynamic tool hydration failed: {e}")
 
+    # Hydrate MCP servers (graceful if mcp not installed)
+    try:
+        from modules.mcp_bridge import hydrate_mcp_servers
+
+        mcp_tools = hydrate_mcp_servers()
+        if mcp_tools:
+            log_info(f"Hydrated {len(mcp_tools)} MCP tool(s).")
+    except Exception as e:
+        log_error(f"MCP hydration skipped: {e}")
+
     # Auto-update check in background (non-blocking, controlled by user preference)
     threading.Thread(target=check_auto_update, daemon=True, name="AutoUpdateCheck").start()
 

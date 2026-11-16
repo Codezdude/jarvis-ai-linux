@@ -11,6 +11,7 @@ import psutil
 from modules.logger import log_error, log_info
 from modules.approval import register_ui_prompt_callback
 from modules.budget import register_budget_alert_callback
+from modules.preferences import get_runtime_settings, update_runtime_settings
 from modules.reflections import get_reflections_for_review, mark_reflection_reviewed
 from modules.voice import speak, set_voice_enabled, get_voice_enabled
 from modules.memory import (
@@ -70,6 +71,11 @@ class JarvisHUD:
         self._editing_message_id = None
         self._rendered_messages = []
         self._current_session_id = "default"
+        self._settings_modal = None
+        try:
+            self._hud_always_on_top = bool(get_runtime_settings().get("hud_always_on_top", True))
+        except Exception:
+            self._hud_always_on_top = True
         set_runtime_state("voice_enabled", self.voice_enabled)
         set_runtime_state("show_telemetry", self.show_telemetry)
         set_runtime_state("fullscreen_mode", self.fullscreen_mode)
@@ -137,7 +143,7 @@ class JarvisHUD:
         self.settings_btn = ctk.CTkButton(
             actions, text="\u2699", width=30, height=28, fg_color="transparent",
             text_color="#9ed5ff", hover_color="#183047", font=("DejaVu Sans", 11, "bold"),
-            command=self.toggle_settings_panel
+            command=self._open_settings_modal
         )
         self.settings_btn.pack(side="right", padx=(0, 6))
 
@@ -477,6 +483,215 @@ class JarvisHUD:
             self.review_visible = True
             self.load_review_data()
         set_runtime_state("review_visible", self.review_visible)
+
+    # --- SETTINGS MODAL (⚙) ---
+    def _open_settings_modal(self):
+        """Open a dedicated settings dialog organized into four sections.
+
+        Sections: Appearance, AI & Routing, Feedback, System. Persists routing
+        preferences via modules.preferences and reuses the existing toggle
+        handlers so the inline HUD panel stays in sync.
+        """
+        if getattr(self, "_settings_modal", None) is not None:
+            try:
+                self._settings_modal.focus()
+                return
+            except Exception:
+                self._settings_modal = None
+
+        try:
+            settings = get_runtime_settings()
+        except Exception:
+            settings = {}
+
+        modal = ctk.CTkToplevel(self.root)
+        self._settings_modal = modal
+        modal.title("JARVIS // SETTINGS")
+        modal.geometry("560x720")
+        modal.configure(fg_color="#0a141d")
+        try:
+            modal.transient(self.root)
+            modal.after(50, modal.grab_set)
+        except Exception:
+            pass
+
+        ctk.CTkLabel(
+            modal, text="\u2699 SETTINGS", text_color="#9ed5ff",
+            font=("DejaVu Sans", 14, "bold"),
+        ).pack(pady=(14, 6))
+
+        body = ctk.CTkScrollableFrame(modal, fg_color="transparent")
+        body.pack(fill="both", expand=True, padx=12, pady=(0, 8))
+
+        def _section(title, accent="#9ed5ff"):
+            frame = ctk.CTkFrame(body, fg_color="#0d1d2a", corner_radius=12,
+                                 border_width=1, border_color="#214b6b")
+            frame.pack(fill="x", pady=6)
+            ctk.CTkLabel(frame, text=title, text_color=accent,
+                         font=("DejaVu Sans", 10, "bold")).pack(anchor="w", padx=12, pady=(8, 4))
+            return frame
+
+        def _toggle_button(parent, label, state_attr, handler, on_text, off_text):
+            state = bool(getattr(self, state_attr))
+            btn = ctk.CTkButton(
+                parent, text=f"{label}: {'ON' if state else 'OFF'}", height=28,
+                fg_color="#122738", text_color="#9ef0c4" if state else "#ff9d9d",
+                hover_color="#173b2f", font=("DejaVu Sans", 9, "bold"), corner_radius=8,
+            )
+
+            def _clicked():
+                handler()
+                new_state = bool(getattr(self, state_attr))
+                btn.configure(text=f"{label}: {'ON' if new_state else 'OFF'}",
+                              text_color="#9ef0c4" if new_state else "#ff9d9d")
+
+            btn.configure(command=_clicked)
+            btn.pack(fill="x", padx=12, pady=4)
+            return btn
+
+        # ── 1. APPEARANCE ───────────────────────────────────────────
+        appear = _section("1 \u2022 APPEARANCE")
+        op_row = ctk.CTkFrame(appear, fg_color="transparent")
+        op_row.pack(fill="x", padx=12, pady=4)
+        ctk.CTkLabel(op_row, text="Opacity", text_color="#dbeeff",
+                     font=("DejaVu Sans", 9)).pack(side="left")
+        for alpha_val in [0.75, 0.9, 1.0]:
+            ctk.CTkButton(
+                op_row, text=f"{int(alpha_val * 100)}%", width=52, height=24,
+                fg_color="#122738", text_color="#9ed5ff", hover_color="#183a59",
+                font=("DejaVu Sans", 8, "bold"), corner_radius=8,
+                command=lambda a=alpha_val: self.set_opacity(a),
+            ).pack(side="right", padx=2)
+        _toggle_button(appear, "Fullscreen", "fullscreen_mode", self.toggle_fullscreen,
+                       "Fullscreen", "Fullscreen")
+        self._modal_ontop_btn = _toggle_button(
+            appear, "Always on Top", "_hud_always_on_top", self._toggle_always_on_top,
+            "Always on Top", "Always on Top")
+
+        # ── 2. AI & ROUTING ─────────────────────────────────────────
+        routing = _section("2 \u2022 AI & ROUTING", accent="#7ae6c9")
+        prov_row = ctk.CTkFrame(routing, fg_color="transparent")
+        prov_row.pack(fill="x", padx=12, pady=4)
+        ctk.CTkLabel(prov_row, text="Provider", text_color="#dbeeff",
+                     font=("DejaVu Sans", 9)).pack(side="left")
+        self._modal_provider_menu = ctk.CTkOptionMenu(
+            prov_row, values=["Auto", "Groq", "Gemini", "Kilo", "Cloudflare", "AGY", "Ollama"],
+            width=140, height=28, fg_color="#122738", text_color="#dbeeff",
+            button_color="#183a59", dropdown_fg_color="#071018", dropdown_text_color="#dbeeff",
+            font=("DejaVu Sans", 9), command=self.set_preferred_provider_for_ui,
+        )
+        current_prov = (self.preferred_provider or "auto").lower()
+        self._modal_provider_menu.set("Auto" if current_prov == "auto" else current_prov.title())
+        self._modal_provider_menu.pack(side="right")
+
+        route_row = ctk.CTkFrame(routing, fg_color="transparent")
+        route_row.pack(fill="x", padx=12, pady=4)
+        ctk.CTkLabel(route_row, text="Routing mode", text_color="#dbeeff",
+                     font=("DejaVu Sans", 9)).pack(side="left")
+        self._modal_route_menu = ctk.CTkOptionMenu(
+            route_row, values=["Auto", "Ollama only"], width=140, height=28,
+            fg_color="#122738", text_color="#dbeeff", button_color="#183a59",
+            dropdown_fg_color="#071018", dropdown_text_color="#dbeeff",
+            font=("DejaVu Sans", 9),
+            command=lambda v: update_runtime_settings(
+                {"routing_mode": "ollama_only" if v == "Ollama only" else "auto"}),
+        )
+        self._modal_route_menu.set(
+            "Ollama only" if settings.get("routing_mode") == "ollama_only" else "Auto")
+        self._modal_route_menu.pack(side="right")
+
+        cap_row = ctk.CTkFrame(routing, fg_color="transparent")
+        cap_row.pack(fill="x", padx=12, pady=4)
+        ctk.CTkLabel(cap_row, text="Daily cloud token cap", text_color="#dbeeff",
+                     font=("DejaVu Sans", 9)).pack(side="left")
+        self._modal_cap_entry = ctk.CTkEntry(cap_row, width=120, height=28,
+                                             fg_color="#122738", text_color="#dbeeff")
+        try:
+            self._modal_cap_entry.insert(0, str(int(settings.get("daily_cloud_token_cap", 250000))))
+        except Exception:
+            self._modal_cap_entry.insert(0, "250000")
+        self._modal_cap_entry.pack(side="right")
+        ctk.CTkButton(
+            routing, text="Save routing", height=26, fg_color="#173b2f",
+            text_color="#9ef0c4", hover_color="#1f5340",
+            font=("DejaVu Sans", 9, "bold"), corner_radius=8,
+            command=self._save_routing_settings,
+        ).pack(fill="x", padx=12, pady=(2, 8))
+
+        # ── 3. FEEDBACK ─────────────────────────────────────────────
+        feedback = _section("3 \u2022 FEEDBACK", accent="#ffd700")
+        _toggle_button(feedback, "Telemetry", "show_telemetry", self.toggle_telemetry,
+                       "Telemetry", "Telemetry")
+        _toggle_button(feedback, "Voice", "voice_enabled", self.toggle_voice_feedback,
+                       "Voice", "Voice")
+
+        # ── 4. SYSTEM ───────────────────────────────────────────────
+        system = _section("4 \u2022 SYSTEM", accent="#ff9d9d")
+        _toggle_button(system, "Auto-Update on Startup", "auto_update_enabled",
+                       self.toggle_auto_update, "Auto-Update", "Auto-Update")
+        _toggle_button(system, "Scheduler", "scheduler_enabled", self.toggle_scheduler,
+                       "Scheduler", "Scheduler")
+        btn_row = ctk.CTkFrame(system, fg_color="transparent")
+        btn_row.pack(fill="x", padx=12, pady=8)
+        ctk.CTkButton(
+            btn_row, text="Check Updates", height=28, fg_color="#122738",
+            text_color="#9ed5ff", hover_color="#183a59",
+            font=("DejaVu Sans", 9, "bold"), corner_radius=8,
+            command=self._on_check_updates_click,
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(
+            btn_row, text="Clear History", height=28, fg_color="#341d1d",
+            text_color="#ff9d9d", hover_color="#4a2626",
+            font=("DejaVu Sans", 9, "bold"), corner_radius=8,
+            command=self._on_clear_history_click,
+        ).pack(side="left")
+
+        # ── footer ──────────────────────────────────────────────────
+        footer = ctk.CTkFrame(modal, fg_color="transparent")
+        footer.pack(fill="x", padx=12, pady=(0, 12))
+        ctk.CTkButton(
+            footer, text="Close", height=30, fg_color="#183a59", text_color="#dbeeff",
+            hover_color="#214b6b", font=("DejaVu Sans", 10, "bold"), corner_radius=8,
+            command=self._close_settings_modal,
+        ).pack(fill="x")
+
+    def _close_settings_modal(self):
+        modal = getattr(self, "_settings_modal", None)
+        if modal is None:
+            return
+        try:
+            modal.grab_release()
+            modal.destroy()
+        except Exception:
+            pass
+        self._settings_modal = None
+
+    def _toggle_always_on_top(self):
+        new_state = not bool(getattr(self, "_hud_always_on_top", False))
+        self._hud_always_on_top = new_state
+        try:
+            self.root.attributes("-topmost", new_state)
+        except Exception:
+            pass
+        try:
+            update_runtime_settings({"hud_always_on_top": new_state})
+        except Exception:
+            pass
+
+    def _save_routing_settings(self):
+        try:
+            raw = self._modal_cap_entry.get().strip()
+            cap = max(0, int(raw)) if raw else 250000
+        except Exception:
+            cap = 250000
+        route = "ollama_only" if self._modal_route_menu.get() == "Ollama only" else "auto"
+        try:
+            update_runtime_settings({"daily_cloud_token_cap": cap, "routing_mode": route})
+            self.update_ui("SETTINGS SAVED", "idle",
+                           f"Routing saved (cap={cap}, mode={route}).")
+        except Exception as e:
+            log_error(f"Failed to save routing settings: {e}")
+            self.update_ui("SAVE ERROR", "idle", f"Failed to save settings: {e}")
 
     def load_review_data(self):
         reflections = get_reflections_for_review(

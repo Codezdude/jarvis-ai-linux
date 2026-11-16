@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import threading
 import time
+import functools
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -52,6 +53,7 @@ from modules.memory import (
 )
 from modules.learning import record_interaction, summarize_recent_logs, auto_learn_from_logs
 from modules.mind import cognitive_review_loop
+from modules.preferences import format_preferences_for_prompt, set_preference as _set_preference_raw
 from modules.tools import (
     apply_self_improvement,
     browser_automation_task,
@@ -152,6 +154,10 @@ if not AGY_PATH or not os.path.exists(AGY_PATH):
 groq_client = Groq(api_key=GROQ_API_KEY, timeout=5.0) if GROQ_API_KEY and Groq else None
 gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY and genai else None
 
+# Bound set_preference for AI-learned heuristics (source="ai", actor="autonomous_ai").
+# User preferences always take strict precedence; AI only fills unconfigured gaps.
+set_preference_ai = functools.partial(_set_preference_raw, source="ai", actor="autonomous_ai")
+
 # Define available tools that the models can execute autonomously
 AVAILABLE_TOOLS = {
     "get_system_diagnostics": get_system_diagnostics,
@@ -197,6 +203,7 @@ AVAILABLE_TOOLS = {
     "manage_clipboard": manage_clipboard,
     "capture_desktop_screenshot": capture_desktop_screenshot,
     "safe_write_file": safe_write_file,
+    "set_preference_ai": set_preference_ai,
 }
 
 # Tool schemas format for OpenAI-compatible providers (Groq & Ollama)
@@ -736,6 +743,22 @@ TOOL_SCHEMAS = [
                     "reason": {"type": "string", "description": "Reason for the file modification"},
                 },
                 "required": ["filepath", "content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_preference_ai",
+            "description": "Record an AI-learned preference/heuristic (source='ai'). AI preferences only fill gaps where no explicit user preference exists for the same key; user preferences always take strict precedence.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string", "description": "Preference key (e.g., 'response.max_bullets', 'autonomous.allowed_hours')"},
+                    "value": {"type": "string", "description": "Preference value (string or JSON-serializable)"},
+                    "weight": {"type": "number", "description": "Confidence weight for this AI preference (default 1.0)"},
+                },
+                "required": ["key", "value"],
             },
         },
     },
@@ -1683,16 +1706,23 @@ def ask_local_brain_with_tools(query: str) -> str:
 
     decision_trace = DecisionTrace(actor="autonomous_worker")
 
+    # Inject active user/AI preferences into the system prompt and record them in the trace.
+    pref_block, traced_pref_keys = format_preferences_for_prompt()
+    decision_trace.preference_keys_used.extend(traced_pref_keys)
+
     # Take a thread-safe snapshot of conversation history for this request
     history = _snapshot_history()
     history.append({"role": "user", "content": query})
 
     trimmed = trim_and_summarize_conversation(history)
     relevant_context = get_relevant_memory_context(query)
-    if relevant_context and trimmed:
+    system_suffix = relevant_context
+    if pref_block:
+        system_suffix = (system_suffix + "\n\n" if system_suffix else "") + pref_block
+    if system_suffix and trimmed:
         trimmed[0] = {
             "role": "system",
-            "content": f"{trimmed[0]['content']}\n\n--- RELEVANT LONG-TERM MEMORY ---\n{relevant_context}"
+            "content": f"{trimmed[0]['content']}\n\n--- RELEVANT LONG-TERM MEMORY / PREFERENCES ---\n{system_suffix}"
         }
     history = trimmed
 

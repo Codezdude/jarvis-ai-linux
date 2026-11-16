@@ -222,5 +222,19 @@
     "status": "approved-for-publish",
     "review_notes": "Ready to publish",
     "last_updated": "2026-11-16T00:05:19Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": false,
+    "status": "pending-approval",
+    "review_notes": "Awaiting human approval.",
+    "last_updated": "2026-11-16T00:23:23Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": true,
+    "status": "approved-for-publish",
+    "review_notes": "Ready to publish",
+    "last_updated": "2026-11-16T00:23:23Z"
   }
 ]

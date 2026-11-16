@@ -1135,21 +1135,30 @@ def _build_conversation_summary(history: list[dict]) -> str:
 
 
 def trim_and_summarize_conversation(history: list[dict]) -> list[dict]:
-    """Trim long conversation logs and keep a concise summary plus recent turns to preserve continuity."""
+    """Preserve the core JARVIS system prompt while keeping a rolling summary and the last 16 dialogue turns."""
+    base_system = CONVERSATION_HISTORY[0] if CONVERSATION_HISTORY else {
+        "role": "system",
+        "content": "You are JARVIS, an advanced autonomous AI assistant. Always address the user as Sir."
+    }
     if not history:
-        return [{"role": "system", "content": "No conversation context yet."}]
+        return [base_system]
 
     summary = _build_conversation_summary(history)
     recent_messages = []
-    for message in history[-8:]:
-        if isinstance(message, dict):
-            content = _clean_message_text(message)
-            if content:
-                recent_messages.append(message)
+    for message in history:
+        if not isinstance(message, dict) or message.get("role") == "system":
+            continue
+        content = _clean_message_text(message)
+        if content or message.get("tool_calls"):
+            recent_messages.append(message)
 
-    final_history = [{"role": "system", "content": summary}]
-    final_history.extend(recent_messages)
-    return final_history[:12]
+    # Keep the last 16 messages (8 full user/assistant exchanges) so multi-step context never drops
+    kept_recent = recent_messages[-16:]
+    merged_system = {
+        "role": "system",
+        "content": f"{base_system['content']}\n\n--- ACTIVE SESSION STATE ---\n{summary}"
+    }
+    return [merged_system] + kept_recent
 
 
 def ask_local_brain(query: str) -> str:
@@ -1234,7 +1243,7 @@ def call_cloudflare_workers_ai(messages: list) -> str:
 
     client = OpenAI(
         base_url=f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
-        api_token=api_token,
+        api_key=api_token,
         timeout=12.0,
     )
 
@@ -1480,11 +1489,14 @@ def ask_local_brain_with_tools(query: str) -> str:
     history = _snapshot_history()
     history.append({"role": "user", "content": query})
 
+    trimmed = trim_and_summarize_conversation(history)
     relevant_context = get_relevant_memory_context(query)
-    if relevant_context:
-        history = [{"role": "system", "content": relevant_context}] + trim_and_summarize_conversation(history)
-    else:
-        history = trim_and_summarize_conversation(history)
+    if relevant_context and trimmed:
+        trimmed[0] = {
+            "role": "system",
+            "content": f"{trimmed[0]['content']}\n\n--- RELEVANT LONG-TERM MEMORY ---\n{relevant_context}"
+        }
+    history = trimmed
 
     # Persist the trimmed history back under lock
     _replace_history(history)
@@ -1607,15 +1619,20 @@ def ask_local_brain_with_tools(query: str) -> str:
                         CONVERSATION_HISTORY.extend(tool_messages)
                         history = list(CONVERSATION_HISTORY)
 
+                    fn_response_parts = [
+                        genai.types.Part.from_function_response(
+                            name=tm["name"],
+                            response={"result": str(tm["content"])},
+                        )
+                        for tm in tool_messages
+                        if tm.get("role") == "tool"
+                    ]
                     follow_up = gemini_client.models.generate_content(
                         model=CLOUD_MODEL_GEMINI,
                         contents=[
                             gemini_prompt,
                             response.candidates[0].content,
-                            genai.types.Part.from_function_response(
-                                name=response.function_calls[0].name,
-                                response={"result": str(tool_messages[-1]["content"]) if tool_messages else ""},
-                            ),
+                            *fn_response_parts,
                         ],
                         config=config,
                     )
@@ -1651,7 +1668,8 @@ def ask_local_brain_with_tools(query: str) -> str:
                     tool_messages = [dict(message)]
                     for tool_call in tool_calls:
                         func_name = tool_call["function"]["name"]
-                        func_args = tool_call["function"]["arguments"]
+                        raw_args = tool_call["function"].get("arguments", {})
+                        func_args = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
                         print(f"[LOCAL AGENT] Tool selected: {func_name}")
 
                         if func_name in AVAILABLE_TOOLS:

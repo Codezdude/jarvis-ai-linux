@@ -1,10 +1,11 @@
 """Self-update module for JARVIS: Git synchronization, dependency updates, and safe process restarts."""
 
 import glob
+import logging
 import os
+import py_compile
 import subprocess
 import sys
-import py_compile
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -48,8 +49,8 @@ def self_update_system(
             capture_output=True,
             text=True,
         )
-        # Commit may fail if nothing to commit — that's fine
-        logs.append(f"Local changes committed: {commit_result.stdout.strip() or commit_result.stderr.strip()}")
+        status_note = commit_result.stdout.strip() or "Working tree clean"
+        logs.append(f"Snapshot: {status_note}")
 
         pull = subprocess.run(
             ["git", "pull", "--rebase", "origin", "main"],
@@ -58,7 +59,8 @@ def self_update_system(
             text=True,
         )
         if pull.returncode != 0:
-            return f"Git pull failed: {pull.stderr.strip()}"
+            subprocess.run(["git", "rebase", "--abort"], cwd=PROJECT_DIR, check=False)
+            return f"Git pull failed (rebase aborted safely): {pull.stderr.strip()}"
         logs.append(f"Git sync: {pull.stdout.strip()}")
 
         # Re-verify syntax after pulling new code
@@ -82,13 +84,14 @@ def self_update_system(
                 text=True,
             )
             logs.append(f"Ollama model {model}: {'updated' if pull_result.returncode == 0 else 'failed'}")
-        logs.append("Ollama models checked/updated.")
 
     # 4. Restart Jarvis cleanly in-place
     if restart_after:
         logs.append("Restarting Jarvis now...")
-        print("\n".join(logs))
+        print("\n".join(logs), flush=True)
+        logging.shutdown()
         os.chdir(PROJECT_DIR)
-        os.execv(sys.executable, [sys.executable] + sys.argv)
+        script_path = os.path.abspath(sys.argv[0])
+        os.execv(sys.executable, [sys.executable, script_path] + sys.argv[1:])
 
     return "\n".join(logs)

@@ -1,22 +1,6 @@
 [
   {
     "role": "user",
-    "content": "hello world"
-  },
-  {
-    "role": "assistant",
-    "content": "Local response from Ollama."
-  },
-  {
-    "role": "user",
-    "content": "hello world"
-  },
-  {
-    "role": "assistant",
-    "content": "Fallback from Ollama."
-  },
-  {
-    "role": "user",
     "content": "what time is it"
   },
   {
@@ -47,6 +31,22 @@
   {
     "role": "assistant",
     "content": "Done listing."
+  },
+  {
+    "role": "user",
+    "content": "hello world"
+  },
+  {
+    "role": "assistant",
+    "content": "Local response from Ollama."
+  },
+  {
+    "role": "user",
+    "content": "hello world"
+  },
+  {
+    "role": "assistant",
+    "content": "Fallback from Ollama."
   },
   {
     "role": "user",

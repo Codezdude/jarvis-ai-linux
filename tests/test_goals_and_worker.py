@@ -83,7 +83,9 @@ class TestStopResumeWorker(unittest.TestCase):
         }
         update_goal(goal["id"], checkpoint=checkpoint, db_path=self.db_path)
 
-        res = process_one_idle_goal(step_executor=bound_executor, max_steps=6, db_path=self.db_path)
+        # Mock evaluate_task_rubric to avoid Ollama calls
+        with patch("modules.reflections.evaluate_task_rubric", return_value={"scores": {}, "passed": True}):
+            res = process_one_idle_goal(step_executor=bound_executor, max_steps=6, db_path=self.db_path)
         self.assertEqual(res["status"], "completed")
 
         stored = get_goal(goal["id"], db_path=self.db_path)

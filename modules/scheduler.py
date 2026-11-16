@@ -329,6 +329,14 @@ def run_reactive_tick(db_path: str = os.path.join(os.path.dirname(os.path.dirnam
     except Exception as e:
         log_error(f"Reactive tick proactive triggers failed: {e}")
 
+    # Self-update detection: prompt once per revision when code/config changed
+    try:
+        from modules.update_watcher import check_and_request_restart
+
+        check_and_request_restart(check_remote=True)
+    except Exception as exc:
+        print(f"[UPDATE] Watcher check skipped: {exc}")
+
     try:
         mined = mine_failure_corpus(db_path=db_path)
         results["mined_goals"] = mined

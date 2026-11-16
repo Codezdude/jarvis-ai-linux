@@ -734,6 +734,28 @@ class JarvisHUD:
                 command=self._save_mcp_settings,
             ).pack(fill="x", padx=12, pady=(4, 8))
 
+        # ── 6. SYSTEM UPDATES & LIFECYCLE ───────────────────────────
+        updates = _section("6 \u2022 SYSTEM UPDATES & LIFECYCLE", accent="#9ed5ff")
+        self.update_status_label = ctk.CTkLabel(
+            updates, text="Boot baseline active \u2022 Ready to check",
+            text_color="#9ed5ff", font=("DejaVu Sans", 9), wraplength=480, justify="left",
+        )
+        self.update_status_label.pack(fill="x", padx=12, pady=(4, 2))
+        upd_row = ctk.CTkFrame(updates, fg_color="transparent")
+        upd_row.pack(fill="x", padx=12, pady=(2, 8))
+        ctk.CTkButton(
+            upd_row, text="Check for Updates & Restart", height=28, fg_color="#122738",
+            text_color="#9ed5ff", hover_color="#183a59",
+            font=("DejaVu Sans", 9, "bold"), corner_radius=8,
+            command=self._on_check_updates_clicked,
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(
+            upd_row, text="Restart J.A.R.V.I.S. Now", height=28, fg_color="#3a2a12",
+            text_color="#ffd79e", hover_color="#59401f",
+            font=("DejaVu Sans", 9, "bold"), corner_radius=8,
+            command=self._on_manual_restart_clicked,
+        ).pack(side="left")
+
         # ── footer ──────────────────────────────────────────────────
         footer = ctk.CTkFrame(modal, fg_color="transparent")
         footer.pack(fill="x", padx=12, pady=(0, 12))
@@ -814,6 +836,49 @@ class JarvisHUD:
         except Exception as e:
             log_error(f"Failed to save MCP settings: {e}")
             self.update_ui("MCP SAVE ERROR", "idle", f"Failed to save MCP settings: {e}")
+
+    def _on_check_updates_clicked(self, status_label=None) -> None:
+        """Background: detect code/config updates, then prompt for a clean restart."""
+        if status_label is None:
+            status_label = getattr(self, "update_status_label", None)
+        if status_label is not None:
+            status_label.configure(text="Checking local & remote repository for updates...")
+
+        def _worker():
+            try:
+                from modules.update_watcher import check_and_request_restart, detect_available_update
+
+                info = detect_available_update(check_remote=True, remote_cooldown_sec=0)
+                if not info:
+                    if status_label is not None:
+                        self.after(0, lambda: status_label.configure(
+                            text="Up to date with active boot revision."))
+                    return
+                summary = "; ".join(info.get("reasons", ["Update available"]))
+                if status_label is not None:
+                    self.after(0, lambda s=summary: status_label.configure(text=f"Update found: {s}"))
+                res = check_and_request_restart(check_remote=True, force_prompt=True)
+                if res.get("status") == "deferred" and status_label is not None:
+                    self.after(0, lambda: status_label.configure(
+                        text="Update ready \u2014 restart deferred by user."))
+            except Exception as exc:
+                if status_label is not None:
+                    self.after(0, lambda e=exc: status_label.configure(text=f"Update check error: {e}"))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_manual_restart_clicked(self) -> None:
+        """Immediate user-initiated clean restart (no update detection)."""
+
+        def _worker():
+            try:
+                from modules.update_watcher import perform_clean_restart
+
+                perform_clean_restart()
+            except Exception as exc:
+                print(f"[UPDATE] Manual restart failed: {exc}")
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def load_review_data(self):
         reflections = get_reflections_for_review(

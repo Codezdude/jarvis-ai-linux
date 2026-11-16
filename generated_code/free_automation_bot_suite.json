@@ -17,7 +17,7 @@
     {
       "bot": "experiment_review_bot",
       "status": "ok",
-      "experiments_seen": 65,
+      "experiments_seen": 66,
       "summary": "Recent experiment folders were scanned to find reusable patterns and promising concept directions.",
       "entries": [
         {
@@ -49,7 +49,7 @@
     {
       "bot": "quality_guard_bot",
       "status": "ok",
-      "files_scanned": 66,
+      "files_scanned": 67,
       "issues_found": 0,
       "summary": "A local syntax scan completed; the project quality signals were logged for future learning loops.",
       "issues": []

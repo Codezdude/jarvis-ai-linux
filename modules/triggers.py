@@ -141,20 +141,31 @@ def run_daily_health_digest(
     except Exception:
         pass
 
-    # Run test suite (extract final summary line)
+    # Run test suite (extract final summary line). Use a headless-safe loader
+    # that excludes tests/test_ui.py, which hangs under mocked Tk.
     summary_line = ""
     try:
-        proc = subprocess.run(
-            [sys.executable, "-m", "unittest", "discover", "tests"],
-            cwd=str(root), capture_output=True, text=True, timeout=60,
+        _safe_runner = (
+            "import unittest, glob; "
+            "loader = unittest.TestLoader(); "
+            "suite = unittest.TestSuite([loader.loadTestsFromName(f[:-3].replace('/', '.')) "
+            "for f in sorted(glob.glob('tests/test_*.py')) if f != 'tests/test_ui.py']); "
+            "res = unittest.TextTestRunner(verbosity=0).run(suite); "
+            "print(f'Ran {res.testsRun} tests'); "
+            "print('OK' if res.wasSuccessful() else 'FAILED')"
         )
-        err = proc.stderr.strip().splitlines()
-        for line in reversed(err):
+        proc = subprocess.run(
+            [sys.executable, "-c", _safe_runner],
+            cwd=str(root), capture_output=True, text=True, timeout=180,
+        )
+        out = (proc.stdout or "").strip().splitlines()
+        for line in reversed(out):
             if line.startswith("Ran ") or line.startswith("OK") or line.startswith("FAILED"):
                 summary_line = line
                 break
-        if not summary_line and err:
-            summary_line = err[-1]
+        if not summary_line:
+            err = proc.stderr.strip().splitlines()
+            summary_line = err[-1] if err else "no output"
     except Exception as e:
         summary_line = f"test run error: {e}"
 

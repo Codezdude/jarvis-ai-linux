@@ -113,9 +113,45 @@ class TestDailyHealthDigest(unittest.TestCase):
         body = self.digest_path.read_text(encoding="utf-8")
         self.assertIn("Daily Health Digest", body)
         self.assertIn("Tests:", body)
-        self.assertTrue("OK" in body or "FAILED" in body)
+        self.assertTrue(
+            "OK" in body or "FAILED" in body or "skipped" in body,
+            f"unexpected tests summary: {body!r}",
+        )
         state = triggers._load_trigger_state(self.state_path)
         self.assertIn("last_daily_digest_ts", state)
+
+    def test_digest_skips_test_suite_under_test_runner(self):
+        with patch("modules.triggers.subprocess.run") as mock_run, \
+             patch("modules.goals.is_stopped", return_value=False), \
+             patch("modules.diagnostics.check_memory_headroom", return_value=(True, 4096)), \
+             patch("modules.diagnostics.get_available_ram_mb", return_value=4096.0), \
+             patch("modules.reflections.get_reflections_for_review", return_value=[]):
+            res = triggers.run_daily_health_digest(
+                project_root=self.root, digest_path=self.digest_path,
+                state_path=self.state_path, force=True,
+            )
+        self.assertTrue(res["written"])
+        commands = [" ".join(str(x) for x in (c.args[0] if c.args else [])) for c in mock_run.call_args_list]
+        self.assertFalse(
+            any("unittest" in cmd for cmd in commands),
+            f"test suite was spawned under a test runner: {commands}",
+        )
+        self.assertIn("skipped (test runner detected)", self.digest_path.read_text(encoding="utf-8"))
+
+    def test_digest_runs_test_suite_in_production_context(self):
+        with patch("modules.triggers._running_under_test_runner", return_value=False), \
+             patch("modules.triggers.subprocess.run", side_effect=self._fake_run) as mock_run, \
+             patch("modules.goals.is_stopped", return_value=False), \
+             patch("modules.diagnostics.check_memory_headroom", return_value=(True, 4096)), \
+             patch("modules.diagnostics.get_available_ram_mb", return_value=4096.0), \
+             patch("modules.reflections.get_reflections_for_review", return_value=[]):
+            res = triggers.run_daily_health_digest(
+                project_root=self.root, digest_path=self.digest_path,
+                state_path=self.state_path, force=True,
+            )
+        self.assertTrue(res["written"])
+        mock_run.assert_called()
+        self.assertIn("OK", self.digest_path.read_text(encoding="utf-8"))
 
     def test_digest_cooldown_skips(self):
         with patch("modules.triggers.subprocess.run", side_effect=self._fake_run), \

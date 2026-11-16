@@ -123,6 +123,22 @@ def run_disk_and_backup_guard(
     }
 
 
+def _running_under_test_runner() -> bool:
+    """True when the current process is a test runner.
+
+    Prevents the daily digest from recursively spawning the whole test suite
+    when ``run_reactive_tick()`` is exercised from inside a test run.
+    """
+    if "pytest" in sys.modules:
+        return True
+    argv0 = (sys.argv[0] if sys.argv else "") or ""
+    return (
+        argv0 == "-c"
+        or argv0.endswith("unittest/__main__.py")
+        or argv0.endswith("unittest.py")
+    )
+
+
 def run_daily_health_digest(
     project_root: Path = None,
     digest_path: Path = Path("/home/millennium/notes/daily_digest.md"),
@@ -156,31 +172,39 @@ def run_daily_health_digest(
 
     # Run test suite (extract final summary line). Use a headless-safe loader
     # that excludes tests/test_ui.py, which hangs under mocked Tk.
+    #
+    # Guard: never run the suite from inside a test runner. Otherwise a test that
+    # calls run_reactive_tick() would recursively spawn the whole suite (and the
+    # spawned child would do the same), stalling for minutes.
     summary_line = ""
-    try:
-        _safe_runner = (
-            "import unittest, glob; "
-            "loader = unittest.TestLoader(); "
-            "suite = unittest.TestSuite([loader.loadTestsFromName(f[:-3].replace('/', '.')) "
-            "for f in sorted(glob.glob('tests/test_*.py')) if f != 'tests/test_ui.py']); "
-            "res = unittest.TextTestRunner(verbosity=0).run(suite); "
-            "print(f'Ran {res.testsRun} tests'); "
-            "print('OK' if res.wasSuccessful() else 'FAILED')"
-        )
-        proc = subprocess.run(
-            [sys.executable, "-c", _safe_runner],
-            cwd=str(root), capture_output=True, text=True, timeout=180,
-        )
-        out = (proc.stdout or "").strip().splitlines()
-        for line in reversed(out):
-            if line.startswith("Ran ") or line.startswith("OK") or line.startswith("FAILED"):
-                summary_line = line
-                break
-        if not summary_line:
-            err = proc.stderr.strip().splitlines()
-            summary_line = err[-1] if err else "no output"
-    except Exception as e:
-        summary_line = f"test run error: {e}"
+    if os.getenv("JARVIS_DIGEST_IN_PROGRESS") == "1" or _running_under_test_runner():
+        summary_line = "skipped (test runner detected)"
+    else:
+        try:
+            _safe_runner = (
+                "import unittest, glob; "
+                "loader = unittest.TestLoader(); "
+                "suite = unittest.TestSuite([loader.loadTestsFromName(f[:-3].replace('/', '.')) "
+                "for f in sorted(glob.glob('tests/test_*.py')) if f != 'tests/test_ui.py']); "
+                "res = unittest.TextTestRunner(verbosity=0).run(suite); "
+                "print(f'Ran {res.testsRun} tests'); "
+                "print('OK' if res.wasSuccessful() else 'FAILED')"
+            )
+            proc = subprocess.run(
+                [sys.executable, "-c", _safe_runner],
+                cwd=str(root), capture_output=True, text=True, timeout=180,
+                env={**os.environ, "JARVIS_DIGEST_IN_PROGRESS": "1"},
+            )
+            out = (proc.stdout or "").strip().splitlines()
+            for line in reversed(out):
+                if line.startswith("Ran ") or line.startswith("OK") or line.startswith("FAILED"):
+                    summary_line = line
+                    break
+            if not summary_line:
+                err = proc.stderr.strip().splitlines()
+                summary_line = err[-1] if err else "no output"
+        except Exception as e:
+            summary_line = f"test run error: {e}"
 
     # Git status
     git_status = ""

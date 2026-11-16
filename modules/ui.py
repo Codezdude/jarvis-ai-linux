@@ -546,7 +546,7 @@ class JarvisHUD:
         modal = ctk.CTkToplevel(self.root)
         self._settings_modal = modal
         modal.title("JARVIS // SETTINGS")
-        modal.geometry("560x720")
+        modal.geometry("640x760")
         modal.configure(fg_color="#0a141d")
         try:
             modal.transient(self.root)
@@ -559,8 +559,81 @@ class JarvisHUD:
             font=("DejaVu Sans", 14, "bold"),
         ).pack(pady=(14, 6))
 
-        body = ctk.CTkScrollableFrame(modal, fg_color="transparent")
-        body.pack(fill="both", expand=True, padx=12, pady=(0, 8))
+        # ── Sidebar + page host ──────────────────────────────────────
+        host = ctk.CTkFrame(modal, fg_color="transparent")
+        host.pack(fill="both", expand=True, padx=12, pady=(0, 8))
+
+        sidebar = ctk.CTkFrame(host, fg_color="#0d1d2a", corner_radius=12,
+                               border_width=1, border_color="#214b6b")
+        sidebar.pack(side="left", fill="y", padx=(0, 8))
+        pages_host = ctk.CTkFrame(host, fg_color="#0d1d2a", corner_radius=12,
+                                  border_width=1, border_color="#214b6b")
+        pages_host.pack(side="right", fill="both", expand=True)
+
+        _PAGES = {}
+        _BTN_RES = {}
+
+        def _page(key):
+            return _PAGES.setdefault(key, ctk.CTkScrollableFrame(pages_host, fg_color="transparent"))
+
+        def _nav(key, label, accent):
+            btn = ctk.CTkButton(
+                sidebar, text=label, height=30, anchor="w",
+                fg_color="transparent", text_color="#dbeeff",
+                hover_color="#122738", font=("DejaVu Sans", 9, "bold"),
+                corner_radius=8,
+            )
+            btn.pack(fill="x", padx=6, pady=2)
+
+            def _select():
+                for k, b in _BTN_RES.items():
+                    b.configure(fg_color="#122738" if k == key else "transparent",
+                                text_color=accent if k == key else "#7aa7c4")
+                for k, p in _PAGES.items():
+                    p.pack_forget()
+                _page(key).pack(fill="both", expand=True, padx=10, pady=10)
+
+            btn.configure(command=_select)
+            _BTN_RES[key] = btn
+            return btn
+
+        def _section(frame, title, accent="#9ed5ff"):
+            sec = ctk.CTkFrame(frame, fg_color="#0a1622", corner_radius=10,
+                               border_width=1, border_color="#1c3a52")
+            sec.pack(fill="x", pady=6)
+            ctk.CTkLabel(sec, text=title, text_color=accent,
+                         font=("DejaVu Sans", 10, "bold")).pack(anchor="w", padx=10, pady=(8, 2))
+            inner = ctk.CTkFrame(sec, fg_color="transparent")
+            inner.pack(fill="x", padx=8, pady=(0, 8))
+            return inner
+
+        def _switch_row(parent, label, state_attr, handler, on_text="ON", off_text="OFF"):
+            row = ctk.CTkFrame(parent, fg_color="transparent")
+            row.pack(fill="x", pady=2)
+            state = bool(getattr(self, state_attr, False))
+            lbl = ctk.CTkLabel(row, text=label, text_color="#dbeeff",
+                               font=("DejaVu Sans", 9))
+            lbl.pack(side="left")
+            sw = ctk.CTkSwitch(row, text=on_text if state else off_text,
+                               progress_color="#7ae6c9", button_color="#9ef0c4",
+                               button_hover_color="#fff", text_color="#9ef0c4",
+                               font=("DejaVu Sans", 8))
+            if state:
+                sw.select()
+            sw.pack(side="right")
+
+            def _toggled():
+                handler()
+                new = bool(getattr(self, state_attr, False))
+                sw.configure(text=on_text if new else off_text,
+                             text_color="#9ef0c4" if new else "#ff9d9d")
+
+            sw.configure(command=_toggled)
+            return sw
+
+        def _info_chip(parent, text, color="#9ed5ff"):
+            ctk.CTkLabel(parent, text=text, text_color=color,
+                         font=("DejaVu Sans", 8)).pack(anchor="w", pady=1)
 
         def _section(title, accent="#9ed5ff"):
             frame = ctk.CTkFrame(body, fg_color="#0d1d2a", corner_radius=12,

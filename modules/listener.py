@@ -35,6 +35,12 @@ class ContinuousVoiceListener:
     def stop(self) -> None:
         self.running = False
 
+    def set_enabled(self, enabled: bool) -> None:
+        """Enable or disable the listener, starting it if newly enabled."""
+        self.enabled = bool(enabled)
+        if self.enabled and not self.running:
+            self.start()
+
     def _extract_command(self, transcript: str, follow_up_active: bool) -> str | None:
         text = transcript.strip()
         lower = text.lower()

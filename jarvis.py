@@ -14,7 +14,7 @@ from modules.logger import log_error, log_info
 from modules.memory import init_db, recall_memories, save_interaction, save_memory
 from modules.scheduler import JarvisScheduler
 from modules.ui import JarvisHUD
-from modules.voice import speak, stop_speaking
+from modules.voice import speak, stop_speaking, get_voice_enabled, register_voice_state_callback
 from pynput import keyboard
 
 hud_instance = None
@@ -160,8 +160,9 @@ if __name__ == "__main__":
     init_db()
 
     if "--cli" in sys.argv:
-        voice_listener = ContinuousVoiceListener(command_callback=process_command)
-        voice_listener.start()
+        if get_voice_enabled():
+            voice_listener = ContinuousVoiceListener(command_callback=process_command)
+            voice_listener.start()
         run_cli_loop()
         sys.exit(0)
 
@@ -182,7 +183,9 @@ if __name__ == "__main__":
             command_callback=process_command,
             hud_callback=hud_instance.update_ui,
         )
-        voice_listener.start()
+        if get_voice_enabled():
+            voice_listener.start()
+        register_voice_state_callback(voice_listener.set_enabled)
     except Exception as e:
         log_error(f"Voice listener startup warning: {e}")
 

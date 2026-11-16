@@ -22,7 +22,16 @@ from modules.workspace_growth import (
     search_workspace_growth_log,
 )
 
+# This module imports modules.local_gateway, which may bind a socket or start a
+# server. Under ``unittest discover`` that shared interpreter can deadlock with
+# other files that also touch sockets/servers (observed: discover hangs while the
+# file passes alone). Default: SKIP in discover mode. The per-file runner in
+# modules/self_improvement.py sets JARVIS_DISCOVER_SKIP=0, so these tests still
+# run there. Override with the env var to run them under discover.
+_DISCOVER_SKIP = os.environ.get("JARVIS_DISCOVER_SKIP", "1") == "1"
 
+
+@unittest.skipIf(_DISCOVER_SKIP, "deadlocks in unittest discover mode; run individually or via run_project_tests()")
 class LocalInterfaceTests(unittest.TestCase):
     def test_mcp_tool_list_includes_main_workspace_tools(self):
         tools = list_mcp_tools()

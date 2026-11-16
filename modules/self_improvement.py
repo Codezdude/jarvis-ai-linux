@@ -205,7 +205,14 @@ def run_project_tests(test_target: str = "tests", timeout: int = 60) -> tuple[bo
                     capture_output=True,
                     text=True,
                     timeout=per_file_timeout,
-                    env={**os.environ, "JARVIS_OLLAMA_TIMEOUT_SEC": "10"},
+                    env={
+                        **os.environ,
+                        # Per-file mode: every file runs, including the ones that
+                        # skip themselves under ``unittest discover`` (see the
+                        # JARVIS_DISCOVER_SKIP guard in tests/test_ui.py).
+                        "JARVIS_DISCOVER_SKIP": "0",
+                        "JARVIS_OLLAMA_TIMEOUT_SEC": "10",
+                    },
                 )
                 chunk = (result.stdout or "") + ("\n" + result.stderr if result.stderr else "")
                 chunk = chunk.strip()

@@ -260,6 +260,43 @@ class TestEnvLoading(InstagramAgentTestBase):
         self.assertIs(ctx.exception, sentinel)
 
 
+class TestPollinationsImageTier(InstagramAgentTestBase):
+    def test_try_pollinations_raises_on_tiny_payload(self):
+        with patch("modules.instagram_agent.urllib.request.urlopen") as mock_open:
+            mock_open.return_value.read.return_value = b"nope"
+            with self.assertRaises(RuntimeError):
+                ig._try_pollinations_image("a prompt")
+
+    def test_try_pollinations_returns_bytes_on_success(self):
+        png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 4000
+        with patch("modules.instagram_agent.urllib.request.urlopen") as mock_open:
+            mock_open.return_value.read.return_value = png_bytes
+            data = ig._try_pollinations_image("a prompt")
+        self.assertEqual(data, png_bytes)
+
+    def test_generate_image_falls_back_to_pillow_when_pollinations_fails(self):
+        out = self.tmp / "fallback.png"
+        with patch("modules.instagram_agent._try_pollinations_image", side_effect=RuntimeError("offline")):
+            result = ig.generate_instagram_image(
+                prompt="test topic",
+                headline="test topic",
+                subtitle="",
+                media_dir=self.tmp,
+            )
+        self.assertTrue(result.exists())
+        self.assertGreater(result.stat().st_size, 0)
+        with result.open("rb") as fh:
+            self.assertEqual(fh.read(8), b"\x89PNG\r\n\x1a\n")
+
+    def test_generate_image_uses_pollinations_bytes_when_available(self):
+        out = self.tmp / "ai.png"
+        png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 4000
+        with patch("modules.instagram_agent._try_pollinations_image", return_value=png_bytes):
+            result = ig.generate_instagram_image(prompt="ai topic", media_dir=self.tmp)
+        self.assertEqual(result, out)
+        self.assertEqual(result.read_bytes(), png_bytes)
+
+
 class TestResolvePublicUrl(InstagramAgentTestBase):
     def test_existing_https_url_is_returned(self):
         self.assertEqual(

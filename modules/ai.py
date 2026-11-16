@@ -156,6 +156,13 @@ AGY_PATH = shutil.which("agy")
 if not AGY_PATH or not os.path.exists(AGY_PATH):
     AGY_PATH = ""
 
+# Hard timeout for local Ollama calls. Without this, a stalled Ollama server or a
+# slow model would hang autonomous callers (planner, rubric scorer, reflections)
+# indefinitely, which in turn hangs the whole test suite and any cycle that gates
+# on run_project_tests(). 60s is generous enough for qwen2.5:7b on CPU but short
+# enough that a hung cycle aborts in bounded time.
+OLLAMA_TIMEOUT_SEC = int(os.getenv("JARVIS_OLLAMA_TIMEOUT_SEC", "60"))
+
 # Initialize clients dynamically
 groq_client = Groq(api_key=GROQ_API_KEY, timeout=5.0) if GROQ_API_KEY and Groq else None
 gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY and genai else None
@@ -1453,8 +1460,18 @@ def ask_local_brain(query: str, force_provider: str | None = None, is_urgent: bo
     """
     if ollama is None:
         return "Local Ollama is not installed or unavailable in this environment."
+    # Autonomous callers (planner, rubric scorer, reflections) pass a raw prompt
+    # as `query`; interactive callers pass a user message. Build a single-message
+    # envelope either way so we never ship the global CONVERSATION_HISTORY to the
+    # background planner (which would leak multi-turn user context into autonomous
+    # cycles and blow the per-cycle token budget).
+    messages = [{"role": "user", "content": query}]
     try:
-        response = ollama.chat(model=MODEL_NAME, messages=sanitize_fallback_messages(CONVERSATION_HISTORY))
+        response = ollama.chat(
+            model=MODEL_NAME,
+            messages=sanitize_fallback_messages(messages),
+            timeout=OLLAMA_TIMEOUT_SEC,
+        )
         return response["message"]["content"]
     except Exception as e:
         return f"Local brain error: {e}"

@@ -1,5 +1,6 @@
 import os
 import sys
+import base64
 import datetime
 import fnmatch
 import importlib
@@ -804,49 +805,114 @@ def list_directory(directory_path: str = ".") -> str:
     return f"Error listing directory: {e}"
 
 
-def generate_image(prompt: str, filename: str = "jarvis_generated.png", width: int = 1080, height: int = 1080) -> str:
-  """Generate a simple local poster-style image using Pillow and a prompt-based layout."""
-  if Image is None or ImageDraw is None or ImageFont is None:
-    return "Image generation is unavailable because Pillow is not installed."
+def _try_pollinations_image(prompt: str, width: int = 1080, height: int = 1080, timeout: int = 60) -> bytes:
+    """Free, no-key AI image via Pollinations.ai REST endpoint. Returns PNG bytes or raises."""
+    import urllib.parse
+    import urllib.request
 
-  try:
+    query = urllib.parse.urlencode({
+        "width": width,
+        "height": height,
+        "nologo": "true",
+        "model": "flux-realism",
+    })
+    url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(prompt)}?{query}"
+    req = urllib.request.Request(url, headers={"User-Agent": "JARVIS/1.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        data = resp.read()
+    if len(data) < 2000:
+        raise RuntimeError(f"Pollinations returned suspiciously small payload ({len(data)} bytes)")
+    return data
+
+
+def generate_image(prompt: str, filename: str = "jarvis_generated.png", width: int = 1080, height: int = 1080) -> str:
+    """Generate an image using free AI tiers, falling back to a local Pillow poster.
+
+    Tier order (all free, no key required for tier 1):
+      1. Pollinations.ai (always available, no API key)
+      2. Gemini Imagen (only when GEMINI_API_KEY is set in .env)
+      3. Local Pillow poster (offline template)
+    """
     os.makedirs(ASSETS_DIR, exist_ok=True)
     safe_name = (filename or "jarvis_generated.png").strip() or "jarvis_generated.png"
     if not safe_name.lower().endswith((".png", ".jpg", ".jpeg")):
-      safe_name += ".png"
+        safe_name += ".png"
     filepath = os.path.join(ASSETS_DIR, safe_name)
 
-    image = Image.new("RGB", (width, height), color="#07131d")
-    draw = ImageDraw.Draw(image)
-    for i in range(0, 400, 24):
-      draw.rectangle([20 + i, 20 + i, width - 20 - i, height - 20 - i], outline=(40 + i // 3, 120 + i // 2, 180), width=2)
+    # Tier 1 — free, no key
+    try:
+        filepath_bytes = _try_pollinations_image(prompt, width=width, height=height)
+        with open(filepath, "wb") as fh:
+            fh.write(filepath_bytes)
+        log_info(f"Generated AI image via Pollinations.ai at {filepath}")
+        return f"Successfully generated AI image and saved it to assets/{safe_name}."
+    except Exception as exc:
+        log_info(f"Pollinations image failed: {exc}")
 
-    title = (prompt or "JARVIS Creative Prompt").strip()[:62] or "JARVIS Creative Prompt"
-    subtitle = "Local AI learning image"
+    # Tier 2 — Gemini Imagen, only if a key is configured
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if gemini_key:
+        import json as _json
+        import urllib.parse
+        import urllib.request
+
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"imagen-3.0-generate-002:predict?key={urllib.parse.quote(gemini_key)}"
+        )
+        payload = _json.dumps({
+            "instances": [{"prompt": prompt}],
+            "parameters": {"sampleCount": 1, "aspectRatio": f"{width}:{height}"},
+        }).encode("utf-8")
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=45) as resp:
+                data = _json.loads(resp.read().decode("utf-8"))
+            preds = data.get("predictions") or []
+            b64_img = preds[0].get("bytesBase64Encoded") if preds else None
+            if b64_img:
+                with open(filepath, "wb") as fh:
+                    fh.write(base64.b64decode(b64_img))
+                log_info(f"Generated AI image via Gemini Imagen at {filepath}")
+                return f"Successfully generated AI image and saved it to assets/{safe_name}."
+        except Exception as exc:
+            log_info(f"Gemini image failed: {exc}")
+
+    if Image is None or ImageDraw is None or ImageFont is None:
+        return "Image generation is unavailable because Pillow is not installed."
 
     try:
-      title_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 54)
-    except IOError:
-      try:
-          title_font = ImageFont.truetype("arial.ttf", 54)
-      except IOError:
-          title_font = ImageFont.load_default()
-    try:
-      sub_font = ImageFont.truetype("DejaVuSans.ttf", 28)
-    except IOError:
-      try:
-          sub_font = ImageFont.truetype("arial.ttf", 28)
-      except IOError:
-          sub_font = ImageFont.load_default()
+        image = Image.new("RGB", (width, height), color="#07131d")
+        draw = ImageDraw.Draw(image)
+        for i in range(0, 400, 24):
+            draw.rectangle([20 + i, 20 + i, width - 20 - i, height - 20 - i], outline=(40 + i // 3, 120 + i // 2, 180), width=2)
 
-    draw.text((60, 220), title, fill="#9fe7ff", font=title_font)
-    draw.text((60, 420), subtitle, fill="#d8f3ff", font=sub_font)
-    image.save(filepath, "PNG")
-    log_info(f"Generated image at {filepath}")
-    return f"Successfully generated image and saved it to assets/{safe_name}."
-  except Exception as e:
-    log_error(f"Failed to generate image: {e}")
-    return f"Failed to generate image: {str(e)}"
+        title = (prompt or "JARVIS Creative Prompt").strip()[:62] or "JARVIS Creative Prompt"
+        subtitle = "Local AI learning image"
+
+        try:
+            title_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 54)
+        except IOError:
+            try:
+                title_font = ImageFont.truetype("arial.ttf", 54)
+            except IOError:
+                title_font = ImageFont.load_default()
+        try:
+            sub_font = ImageFont.truetype("DejaVuSans.ttf", 28)
+        except IOError:
+            try:
+                sub_font = ImageFont.truetype("arial.ttf", 28)
+            except IOError:
+                sub_font = ImageFont.load_default()
+
+        draw.text((60, 220), title, fill="#9fe7ff", font=title_font)
+        draw.text((60, 420), subtitle, fill="#d8f3ff", font=sub_font)
+        image.save(filepath, "PNG")
+        log_info(f"Generated poster image at {filepath}")
+        return f"Successfully generated image and saved it to assets/{safe_name}."
+    except Exception as e:
+        log_error(f"Failed to generate image: {e}")
+        return f"Failed to generate image: {str(e)}"
 
 
 def web_fetch_and_learn(url: str, max_chars: int = 2000) -> str:

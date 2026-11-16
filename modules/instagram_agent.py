@@ -125,6 +125,26 @@ def _render_pillow_card(headline: str, subtitle: str, out_path: Path, handle: st
     return out_path
 
 
+POLLINATIONS_BASE_URL = "https://image.pollinations.ai/prompt"
+
+
+def _try_pollinations_image(prompt: str, width: int = 1080, height: int = 1080, timeout: int = 60) -> bytes:
+    """Free, no-key AI image via Pollinations.ai REST endpoint. Returns PNG bytes or raises."""
+    query = urllib.parse.urlencode({
+        "width": width,
+        "height": height,
+        "nologo": "true",
+        "model": "flux-realism",
+    })
+    url = f"{POLLINATIONS_BASE_URL}/{urllib.parse.quote(prompt)}?{query}"
+    req = urllib.request.Request(url, headers={"User-Agent": "JARVIS/1.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        data = resp.read()
+    if len(data) < 2000:
+        raise RuntimeError(f"Pollinations returned suspiciously small payload ({len(data)} bytes)")
+    return data
+
+
 def generate_instagram_image(
     prompt: str,
     headline: str = "",
@@ -132,31 +152,48 @@ def generate_instagram_image(
     media_dir: Path = DEFAULT_MEDIA_DIR,
     prefer_ai_image: bool = True,
 ) -> Path:
-    """Generate a 1080x1080 post image via Gemini Imagen API if available, else local Pillow card."""
+    """Generate a 1080x1080 post image via free AI tiers, falling back to local Pillow card.
+
+    Tier order (all free, no key required for tier 1):
+      1. Pollinations.ai (always available, no API key)
+      2. Gemini Imagen (only when GEMINI_API_KEY is set in .env)
+      3. Local Pillow card (offline template)
+    """
     media_dir.mkdir(parents=True, exist_ok=True)
     out_path = media_dir / f"ig_{int(time.time() * 1000)}.png"
 
-    gemini_key = _env("GEMINI_API_KEY", "").strip()
-    if prefer_ai_image and gemini_key:
-        url = (
-            "https://generativelanguage.googleapis.com/v1beta/models/"
-            f"imagen-3.0-generate-002:predict?key={urllib.parse.quote(gemini_key)}"
-        )
-        payload = json.dumps({
-            "instances": [{"prompt": prompt}],
-            "parameters": {"sampleCount": 1, "aspectRatio": "1:1"},
-        }).encode("utf-8")
-        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+    if prefer_ai_image:
+        # Tier 1 — free, no key
         try:
-            with urllib.request.urlopen(req, timeout=45) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-            preds = data.get("predictions") or []
-            b64_img = preds[0].get("bytesBase64Encoded") if preds else None
-            if b64_img:
-                out_path.write_bytes(base64.b64decode(b64_img))
-                return out_path
+            out_path.write_bytes(_try_pollinations_image(prompt))
+            print(f"[INSTAGRAM] AI image via Pollinations.ai -> {out_path}")
+            return out_path
         except Exception as exc:
-            print(f"[INSTAGRAM] AI image fallback to Pillow card: {exc}")
+            print(f"[INSTAGRAM] Pollinations image failed: {exc}")
+
+        # Tier 2 — Gemini Imagen, only if a key is configured
+        gemini_key = _env("GEMINI_API_KEY", "").strip()
+        if gemini_key:
+            url = (
+                "https://generativelanguage.googleapis.com/v1beta/models/"
+                f"imagen-3.0-generate-002:predict?key={urllib.parse.quote(gemini_key)}"
+            )
+            payload = json.dumps({
+                "instances": [{"prompt": prompt}],
+                "parameters": {"sampleCount": 1, "aspectRatio": "1:1"},
+            }).encode("utf-8")
+            req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+            try:
+                with urllib.request.urlopen(req, timeout=45) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                preds = data.get("predictions") or []
+                b64_img = preds[0].get("bytesBase64Encoded") if preds else None
+                if b64_img:
+                    out_path.write_bytes(base64.b64decode(b64_img))
+                    print(f"[INSTAGRAM] AI image via Gemini Imagen -> {out_path}")
+                    return out_path
+            except Exception as exc:
+                print(f"[INSTAGRAM] Gemini image failed: {exc}")
 
     return _render_pillow_card(headline or prompt, subtitle, out_path)
 

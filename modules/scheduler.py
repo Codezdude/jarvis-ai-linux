@@ -337,6 +337,14 @@ def run_reactive_tick(db_path: str = os.path.join(os.path.dirname(os.path.dirnam
     except Exception as exc:
         print(f"[UPDATE] Watcher check skipped: {exc}")
 
+    # Instagram publishing queue: publish approved posts whose UTC time is due
+    try:
+        from modules.triggers import run_instagram_scheduler_tick
+
+        results["instagram"] = run_instagram_scheduler_tick()
+    except Exception as exc:
+        print(f"[INSTAGRAM] Scheduler tick failed: {exc}")
+
     try:
         mined = mine_failure_corpus(db_path=db_path)
         results["mined_goals"] = mined

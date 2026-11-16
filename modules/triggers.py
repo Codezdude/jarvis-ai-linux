@@ -39,6 +39,19 @@ def _audit(metadata: dict) -> None:
         pass
 
 
+def run_instagram_scheduler_tick(db_path=None) -> list:
+    """Publish approved Instagram posts whose scheduled UTC time has arrived."""
+    try:
+        from modules.instagram_agent import process_due_instagram_posts
+
+        if db_path is None:
+            return process_due_instagram_posts()
+        return process_due_instagram_posts(db_path=db_path)
+    except Exception as exc:
+        print(f"[INSTAGRAM] Scheduler tick skipped: {exc}")
+        return []
+
+
 def run_disk_and_backup_guard(
     project_root: Path = None,
     min_free_pct: float = 15.0,

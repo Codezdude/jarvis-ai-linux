@@ -67,6 +67,7 @@ from modules.tools import (
     get_system_diagnostics,
     inspect_recent_logs,
     list_directory,
+    list_instagram_queue,
     log_long_term_memory,
     open_website,
     read_local_file,
@@ -75,6 +76,7 @@ from modules.tools import (
     rollback_file,
     run_project_tests,
     safe_write_file,
+    schedule_instagram_post,
     schedule_social_post,
     search_long_term_memory,
     search_project_files,
@@ -222,6 +224,8 @@ AVAILABLE_TOOLS = {
     "review_social_post_draft": review_social_post_draft,
     "schedule_social_post": schedule_social_post,
     "capture_post_analytics": capture_post_analytics,
+    "schedule_instagram_post": schedule_instagram_post,
+    "list_instagram_queue": list_instagram_queue,
     "create_promotional_flyer": create_promotional_flyer,
     "generate_image": generate_image,
     "web_fetch_and_learn": web_fetch_and_learn,
@@ -471,6 +475,36 @@ TOOL_SCHEMAS = [
                     "campaign_name": {"type": "string", "description": "Optional brand or campaign name to associate with the data"},
                 },
                 "required": ["analytics"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "schedule_instagram_post",
+            "description": "Draft an Instagram post (AI caption + square image), request user approval, and add it to the publishing queue.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {"type": "string", "description": "Topic or headline for the Instagram post"},
+                    "scheduled_at_utc": {"type": "string", "description": "Optional ISO-8601 UTC publish time (defaults to now)"},
+                    "caption": {"type": "string", "description": "Optional pre-written caption; generated from the topic when empty"},
+                    "image_prompt": {"type": "string", "description": "Optional image generation prompt for the post graphic"},
+                },
+                "required": ["topic"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_instagram_queue",
+            "description": "List scheduled Instagram posts from the publishing queue, optionally filtered by status.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "status": {"type": "string", "description": "Optional status filter: scheduled, published, failed, or rejected"},
+                },
             },
         },
     },

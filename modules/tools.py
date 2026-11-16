@@ -277,6 +277,57 @@ def schedule_social_post(
   )
 
 
+def schedule_instagram_post(
+    topic: str,
+    scheduled_at_utc: str = "",
+    caption: str = "",
+    image_prompt: str = "",
+) -> str:
+  """Draft an Instagram post (caption + image), request approval, and queue it."""
+  try:
+    from modules.instagram_agent import create_and_schedule_post
+
+    result = create_and_schedule_post(
+        topic=topic,
+        scheduled_at_utc=scheduled_at_utc or None,
+        caption=caption or None,
+        image_prompt=image_prompt or None,
+    )
+    log_info(f"Instagram post queued: id={result['id']} status={result['status']}")
+    return json.dumps(
+        {
+            "id": result["id"],
+            "status": result["status"],
+            "approved": result["approved"],
+            "scheduled_at_utc": result["scheduled_at_utc"],
+            "image_path": result["image_path"],
+        },
+        indent=2,
+    )
+  except Exception as e:
+    log_error(f"Failed to schedule Instagram post: {e}")
+    return f"Failed to schedule Instagram post: {str(e)}"
+
+
+def list_instagram_queue(status: str = "") -> str:
+  """List queued Instagram posts, optionally filtered by status."""
+  try:
+    from modules.instagram_agent import list_scheduled_posts
+
+    posts = list_scheduled_posts(status=status or None)
+    if not posts:
+      return "Instagram queue is empty."
+    lines = [f"Instagram queue ({len(posts)} post(s)):"]
+    for p in posts:
+      lines.append(
+          f"  #{p['id']} [{p['status']}] {p['scheduled_at_utc']} — {p['topic']}"
+      )
+    return "\n".join(lines)
+  except Exception as e:
+    log_error(f"Failed to list Instagram queue: {e}")
+    return f"Failed to list Instagram queue: {str(e)}"
+
+
 def save_code_file(filename: str, content: str) -> str:
   """Saves front-end, back-end code, or design files to generated_code/."""
   try:

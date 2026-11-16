@@ -86,10 +86,12 @@ class TestJarvisProcessCommand(unittest.TestCase):
 
     def test_process_command_streams_reply_chunks(self):
         jarvis = self._import_jarvis()
-        self.mock_ai.return_value = "One two three four five."
 
-        chunks = []
-        jarvis.process_command("stream please", None, chunk_callback=chunks.append)
+        # Simple conversational queries use true streaming via stream_local_brain.
+        with patch("modules.ai.stream_local_brain",
+                   return_value=iter(["One ", "two ", "three ", "four ", "five."])):
+            chunks = []
+            jarvis.process_command("stream please", None, chunk_callback=chunks.append)
         # Concatenation of streamed chunks must reconstruct the full reply exactly
         self.assertEqual("".join(chunks), "One two three four five.")
         self.assertGreater(len(chunks), 1)

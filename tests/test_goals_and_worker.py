@@ -28,12 +28,19 @@ class TestStopResumeWorker(unittest.TestCase):
         self.audit_patcher = patch("modules.audit.DEFAULT_AUDIT_LOG", self.audit_path)
         self.audit_patcher.start()
 
+        # Worker tests target stop/resume behavior, not host memory pressure.
+        self.ram_patcher = patch(
+            "modules.diagnostics.get_available_ram_mb", return_value=8192.0
+        )
+        self.ram_patcher.start()
+
         init_approval_db(self.db_path)
         init_budget_db(self.db_path)
         init_goals_db(self.db_path)
         clear_stop()
 
     def tearDown(self):
+        self.ram_patcher.stop()
         self.audit_patcher.stop()
         clear_stop()
         self.temp_dir.cleanup()

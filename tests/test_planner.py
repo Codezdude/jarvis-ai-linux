@@ -22,11 +22,19 @@ class TestPlanExecuteVerifyReplan(unittest.TestCase):
         self.audit_patcher = patch("modules.audit.DEFAULT_AUDIT_LOG", self.audit_path)
         self.audit_patcher.start()
 
+        # These tests target planning/budget behavior, not host memory pressure.
+        # Pin the pre-flight RAM guard so results don't depend on machine load.
+        self.ram_patcher = patch(
+            "modules.diagnostics.get_available_ram_mb", return_value=8192.0
+        )
+        self.ram_patcher.start()
+
         init_approval_db(self.db_path)
         init_budget_db(self.db_path)
         init_goals_db(self.db_path)
 
     def tearDown(self):
+        self.ram_patcher.stop()
         self.audit_patcher.stop()
         self.temp_dir.cleanup()
 

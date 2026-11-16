@@ -132,11 +132,11 @@ def _running_under_test_runner() -> bool:
     if "pytest" in sys.modules:
         return True
     argv0 = (sys.argv[0] if sys.argv else "") or ""
-    return (
-        argv0 == "-c"
-        or argv0.endswith("unittest/__main__.py")
-        or argv0.endswith("unittest.py")
-    )
+    if argv0 == "-c":
+        return True
+    if argv0.startswith("python -m unittest") or argv0.startswith("python -m pytest"):
+        return True
+    return argv0.endswith("unittest/__main__.py") or argv0.endswith("unittest.py")
 
 
 def run_daily_health_digest(

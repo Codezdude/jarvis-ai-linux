@@ -229,6 +229,37 @@ class TestProcessDuePosts(InstagramAgentTestBase):
         self.assertEqual(seen["existing"], "https://already.example.com/x.png")
 
 
+class TestEnvLoading(InstagramAgentTestBase):
+    def test_env_delegates_to_project_dotenv_loader(self):
+        values = {"IG_USER_ID": "17841400000000000", "IG_ACCESS_TOKEN": "tok"}
+        with patch(
+            "modules.ai.get_env_value",
+            side_effect=lambda name, default="": values.get(name, default),
+        ):
+            self.assertEqual(ig._env("IG_USER_ID"), "17841400000000000")
+            self.assertEqual(ig._env("IG_ACCESS_TOKEN"), "tok")
+            self.assertEqual(ig._env("MISSING_KEY", "fallback"), "fallback")
+
+    def test_env_falls_back_to_os_environ_when_ai_unavailable(self):
+        with patch("modules.ai.get_env_value", side_effect=RuntimeError("ai import failed")), \
+             patch.dict(os.environ, {"IG_USER_ID": "999"}):
+            self.assertEqual(ig._env("IG_USER_ID"), "999")
+
+    def test_publish_uses_env_credentials(self):
+        sentinel = RuntimeError("reached network")
+
+        def _fake_env(name, default=""):
+            return {"IG_USER_ID": "uid-1", "IG_ACCESS_TOKEN": "tok-1"}.get(name, default)
+
+        with patch("modules.instagram_agent._env", side_effect=_fake_env), \
+             patch("modules.instagram_agent.urllib.request.urlopen", side_effect=sentinel):
+            with self.assertRaises(RuntimeError) as ctx:
+                ig.publish_to_instagram_graph("https://x/y.png", "cap")
+
+        # Got past the credential check and attempted the Graph API call.
+        self.assertIs(ctx.exception, sentinel)
+
+
 class TestResolvePublicUrl(InstagramAgentTestBase):
     def test_existing_https_url_is_returned(self):
         self.assertEqual(

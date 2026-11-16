@@ -26,6 +26,21 @@ DEFAULT_MEDIA_DIR = PROJECT_ROOT / "data" / "ig_media"
 GRAPH_API_VERSION = os.getenv("IG_GRAPH_API_VERSION", "v21.0")
 
 
+def _env(name: str, default: str = "") -> str:
+    """Read a setting from the environment, loading the project ``.env`` first.
+
+    ``modules.ai`` loads ``.env`` into ``os.environ`` at import time, but this
+    module must not depend on import order, so load it explicitly (with a
+    fallback if the AI router is unavailable).
+    """
+    try:
+        from modules.ai import get_env_value
+
+        return get_env_value(name, default)
+    except Exception:
+        return os.getenv(name, default)
+
+
 def _ensure_ig_schema(conn: sqlite3.Connection) -> None:
     conn.execute("""
         CREATE TABLE IF NOT EXISTS instagram_posts (
@@ -104,7 +119,7 @@ def _render_pillow_card(headline: str, subtitle: str, out_path: Path, handle: st
         wrapped_sub = textwrap.fill(subtitle.strip()[:240], width=38)
         draw.multiline_text((76, 560), wrapped_sub, fill=(148, 163, 184), font=body_font, spacing=12)
 
-    footer_text = handle or os.getenv("IG_HANDLE", "@jarvis")
+    footer_text = handle or _env("IG_HANDLE", "@jarvis")
     draw.text((76, size - 115), footer_text, fill=(56, 189, 248), font=footer_font)
     img.save(out_path, format="PNG")
     return out_path
@@ -121,7 +136,7 @@ def generate_instagram_image(
     media_dir.mkdir(parents=True, exist_ok=True)
     out_path = media_dir / f"ig_{int(time.time() * 1000)}.png"
 
-    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    gemini_key = _env("GEMINI_API_KEY", "").strip()
     if prefer_ai_image and gemini_key:
         url = (
             "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -151,11 +166,11 @@ def resolve_public_image_url(image_path: Path, existing_url: str = "") -> str:
     if existing_url.startswith("https://"):
         return existing_url
 
-    base_url = os.getenv("IG_PUBLIC_BASE_URL", "").strip()
+    base_url = _env("IG_PUBLIC_BASE_URL", "").strip()
     if base_url:
         return f"{base_url.rstrip('/')}/{image_path.name}"
 
-    imgbb_key = os.getenv("IMGBB_API_KEY", "").strip()
+    imgbb_key = _env("IMGBB_API_KEY", "").strip()
     if imgbb_key and image_path.is_file():
         b64_data = base64.b64encode(image_path.read_bytes()).decode("ascii")
         body = urllib.parse.urlencode({"key": imgbb_key, "image": b64_data}).encode("utf-8")
@@ -178,8 +193,8 @@ def publish_to_instagram_graph(
     access_token: Optional[str] = None,
 ) -> str:
     """Execute Meta's 2-step Instagram Graph API container creation and publish flow."""
-    uid = (ig_user_id or os.getenv("IG_USER_ID", "")).strip()
-    token = (access_token or os.getenv("IG_ACCESS_TOKEN", "")).strip()
+    uid = (ig_user_id or _env("IG_USER_ID", "")).strip()
+    token = (access_token or _env("IG_ACCESS_TOKEN", "")).strip()
     if not uid or not token:
         raise RuntimeError("Missing IG_USER_ID or IG_ACCESS_TOKEN environment variables.")
 

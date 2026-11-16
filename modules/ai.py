@@ -1955,8 +1955,14 @@ def _dispatch_tool(func_name: str, func_args: dict) -> str:
 
     handler = AVAILABLE_TOOLS.get(func_name)
     if handler is None:
-        handler = get_dynamic_tool(func_name)
-    if handler is None:
+        # Dynamic synthesized tools run isolated in a subprocess with a hard timeout
+        try:
+            from modules.tools import get_dynamic_tool, run_dynamic_tool_isolated
+
+            if get_dynamic_tool(func_name) is not None:
+                return run_dynamic_tool_isolated(func_name, func_args or {})
+        except Exception:
+            pass
         return f"Unknown tool: {func_name}"
     try:
         return handler(**func_args) if func_args else handler()

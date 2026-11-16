@@ -1,4 +1,5 @@
 import os
+import sys
 import datetime
 import fnmatch
 import importlib
@@ -914,10 +915,10 @@ def set_system_volume(level_percent: int = 50, mute: bool | None = None) -> str:
     try:
         if mute is not None:
             flag = "1" if mute else "0"
-            _sp.run(["pactl", "set-sink-mute", "@DEFAULT_SINK@", flag], check=True)
+            _sp.run(["pactl", "set-sink-mute", "@DEFAULT_SINK@", flag], check=True, timeout=10)
             return f"System audio {'muted' if mute else 'unmuted'}."
         clamped = max(0, min(100, int(level_percent)))
-        _sp.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{clamped}%"], check=True)
+        _sp.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{clamped}%"], check=True, timeout=10)
         return f"System volume set to {clamped}%."
     except Exception as e:
         return f"Failed to adjust system volume: {e}"
@@ -934,10 +935,10 @@ def control_linux_app(action: str, app_name: str) -> str:
             _sp.Popen(target.split(), start_new_session=True)
             return f"Launched '{target}'."
         elif act == "focus":
-            res = _sp.run(["wmctrl", "-a", target], capture_output=True, text=True)
+            res = _sp.run(["wmctrl", "-a", target], capture_output=True, text=True, timeout=10)
             return f"Focused window matching '{target}'." if res.returncode == 0 else f"No open window matched '{target}'."
         elif act == "close":
-            res = _sp.run(["wmctrl", "-c", target], capture_output=True, text=True)
+            res = _sp.run(["wmctrl", "-c", target], capture_output=True, text=True, timeout=10)
             return f"Closed window matching '{target}'." if res.returncode == 0 else f"Could not close '{target}'."
         return "Invalid action. Use 'open', 'focus', or 'close'."
     except Exception as e:
@@ -949,9 +950,9 @@ def manage_clipboard(action: str = "read", text: str = "") -> str:
     act = (action or "read").strip().lower()
     try:
         if act == "write":
-            _sp.run(["xclip", "-selection", "clipboard"], input=text, text=True, check=True)
+            _sp.run(["xclip", "-selection", "clipboard"], input=text, text=True, check=True, timeout=10)
             return f"Copied {len(text)} characters to clipboard."
-        res = _sp.run(["xclip", "-selection", "clipboard", "-o"], capture_output=True, text=True)
+        res = _sp.run(["xclip", "-selection", "clipboard", "-o"], capture_output=True, text=True, timeout=10)
         return res.stdout if res.returncode == 0 else "Clipboard is empty."
     except Exception as e:
         return f"Clipboard error: {e}"
@@ -966,7 +967,7 @@ def capture_desktop_screenshot(filename: str = "") -> str:
         if not fname.endswith(".png"):
             fname += ".png"
         full_path = _os.path.join(out_dir, fname)
-        _sp.run(["scrot", full_path], check=True)
+        _sp.run(["scrot", full_path], check=True, timeout=15)
         return f"Screenshot saved to {full_path}"
     except Exception as e:
         return f"Screenshot failed: {e}"
@@ -995,6 +996,66 @@ def register_dynamic_tool(
 def get_dynamic_tool(tool_name: str) -> Optional[Callable[..., Any]]:
     entry = DYNAMIC_TOOL_REGISTRY.get(tool_name)
     return entry["callable"] if entry else None
+
+
+DYNAMIC_TOOL_TIMEOUT_SEC = 15
+
+_DYNAMIC_TOOL_RUNNER = (
+    "import sys, json, importlib\n"
+    "root, module_name, tool_name, args_json = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]\n"
+    "sys.path.insert(0, root)\n"
+    "try:\n"
+    "    mod = importlib.import_module(module_name)\n"
+    "    fn = getattr(mod, tool_name)\n"
+    "    args = json.loads(args_json) if args_json else {}\n"
+    "    result = fn(**args) if args else fn()\n"
+    "    print(json.dumps({'ok': True, 'result': result}, default=str))\n"
+    "except Exception as exc:\n"
+    "    print(json.dumps({'ok': False, 'error': f'{type(exc).__name__}: {exc}'}))\n"
+)
+
+
+def run_dynamic_tool_isolated(
+    tool_name: str,
+    func_args: Optional[Dict[str, Any]] = None,
+    timeout: int = DYNAMIC_TOOL_TIMEOUT_SEC,
+    module_name: str = "modules.dynamic_tools",
+) -> str:
+    """Execute a synthesized dynamic tool in a separate process with a hard timeout.
+
+    Isolation protects the HUD/runtime from a misbehaving or hanging synthesized
+    tool: the call runs in a fresh ``modules.dynamic_tools`` interpreter, its
+    result is serialized to JSON on stdout, and a timeout terminates the child.
+    Returns a string suitable for feeding back to the model.
+    """
+    args_json = json.dumps(func_args or {})
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-c", _DYNAMIC_TOOL_RUNNER,
+             PROJECT_ROOT, module_name, tool_name, args_json],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            cwd=PROJECT_ROOT,
+        )
+    except subprocess.TimeoutExpired:
+        log_error(f"Dynamic tool '{tool_name}' timed out after {timeout}s")
+        return f"Dynamic tool '{tool_name}' timed out after {timeout}s."
+    except Exception as e:
+        log_error(f"Dynamic tool '{tool_name}' failed to launch: {e}")
+        return f"Dynamic tool '{tool_name}' failed to launch: {e}"
+
+    out = (proc.stdout or "").strip()
+    if not out:
+        err = (proc.stderr or "").strip()
+        return f"Dynamic tool '{tool_name}' produced no output. {err[:400]}"
+    try:
+        payload = json.loads(out.splitlines()[-1])
+    except Exception:
+        return f"Dynamic tool '{tool_name}' returned unparseable output: {out[:400]}"
+    if payload.get("ok"):
+        return str(payload.get("result", ""))
+    return f"Dynamic tool '{tool_name}' error: {payload.get('error', 'unknown')}"
 
 
 def get_all_dynamic_tool_schemas() -> List[Dict[str, Any]]:

@@ -12,6 +12,16 @@ from modules.logger import log_error, log_info
 from modules.approval import register_ui_prompt_callback
 from modules.budget import register_budget_alert_callback
 from modules.preferences import get_runtime_settings, update_runtime_settings
+
+import re as _re
+
+_CODE_BLOCK_RE = _re.compile(r"```[a-zA-Z0-9_+\-]*\n(.*?)```", _re.DOTALL)
+
+
+def _extract_last_code_block(text: str):
+    """Return the last fenced ```code``` block body in text, or None."""
+    matches = _CODE_BLOCK_RE.findall(text or "")
+    return matches[-1] if matches else None
 from modules.reflections import get_reflections_for_review, mark_reflection_reviewed
 from modules.voice import speak, set_voice_enabled, get_voice_enabled
 from modules.memory import (
@@ -262,6 +272,16 @@ class JarvisHUD:
             font=("DejaVu Sans", 11, "bold"), corner_radius=10, command=self.on_mic_click
         )
         mic_btn.grid(row=0, column=2)
+
+        copy_code_btn = ctk.CTkButton(
+            input_frame, text="\U0001f4cb", width=44, height=38,
+            fg_color="#122738", text_color="#9ed5ff", hover_color="#183a59",
+            font=("DejaVu Sans", 12, "bold"), corner_radius=10,
+            command=self._copy_last_code_block
+        )
+        copy_code_btn.grid(row=0, column=3, padx=(6, 0))
+
+        self.root.bind("<Control-Shift-C>", lambda e: self._copy_last_code_block())
 
         # --- SETTINGS PANEL ---
         self.settings_frame = ctk.CTkFrame(
@@ -738,17 +758,64 @@ class JarvisHUD:
             self.resume_callback()
         self.update_ui("RESUMED", "idle", "Autonomous subsystems resumed.")
 
-    def _append_chat_bubble(self, role, content, message_id=None):
+    def _append_chat_bubble(self, role, content, message_id=None, badge=None):
         """Append a role/content bubble to the response box and track it for edit/resend."""
         self.response_box.configure(state="normal")
         who = "YOU" if role == "user" else "JARVIS"
-        marker = f"{who}: {content}\n" + "\u2500" * 30 + "\n"
+        marker = f"{who}: {content}\n"
         self.response_box.insert("end", marker)
+        if badge:
+            self._insert_dim_line(badge)
+        self.response_box.insert("end", "\u2500" * 30 + "\n")
         self.response_box.see("end")
         self.response_box.configure(state="disabled")
         self._rendered_messages.append(
             {"id": message_id, "role": role, "content": content, "widget": None}
         )
+
+    def _insert_dim_line(self, text: str):
+        """Insert a dim-colored annotation line (falls back to plain text)."""
+        try:
+            self.response_box._textbox.tag_configure("dim", foreground="#5d7a92")
+            self.response_box._textbox.insert("end", text + "\n", "dim")
+        except Exception:
+            self.response_box.insert("end", text + "\n")
+
+    def _latest_tool_badge(self):
+        """Return a dim badge string listing tools invoked in the latest turn, or None."""
+        try:
+            trace = get_latest_decision_trace()
+        except Exception:
+            trace = None
+        if not trace:
+            return None
+        if isinstance(trace, dict):
+            tools = trace.get("tools_invoked")
+        else:
+            tools = getattr(trace, "tools_invoked", None)
+        if not tools:
+            return None
+        unique = list(dict.fromkeys(tools))
+        return "\u2699 tools invoked: " + ", ".join(str(t) for t in unique)
+
+    def _copy_last_code_block(self):
+        """Copy the last fenced code block from the most recent assistant reply."""
+        code = None
+        for msg in reversed(self._rendered_messages):
+            if msg.get("role") != "assistant":
+                continue
+            code = _extract_last_code_block(msg.get("content", ""))
+            if code is not None:
+                break
+        if code is None:
+            self.update_ui("NO CODE", "idle", "No code block found in the last reply.")
+            return
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(code)
+            self.update_ui("CODE COPIED", "idle", "Code block copied to clipboard.")
+        except Exception as e:
+            self.update_ui("COPY ERROR", "idle", f"Copy failed: {e}")
 
     def _hydrate_chat_history(self):
         """Load prior messages for the current session into the response box on boot."""
@@ -1013,6 +1080,10 @@ class JarvisHUD:
             self._live_assistant_buffer = final_text
             self.response_box.configure(state="disabled")
         self.response_box.configure(state="normal")
+        badge = self._latest_tool_badge()
+        if badge:
+            self.response_box.insert("end", "\n")
+            self._insert_dim_line(badge)
         self.response_box.insert("end", "\n" + "\u2500" * 30 + "\n")
         self.response_box.see("end")
         self.response_box.configure(state="disabled")
@@ -1053,7 +1124,7 @@ class JarvisHUD:
                     # A live stream produced this reply; close the bubble instead of duplicating
                     self._close_live_assistant(reply_text)
                 else:
-                    self._append_chat_bubble("assistant", reply_text)
+                    self._append_chat_bubble("assistant", reply_text, badge=self._latest_tool_badge())
                     # Persist assistant reply to the active session + compact if needed
                     sess = self._current_session_id
                     try:

@@ -107,5 +107,57 @@ class TestUIStreaming(unittest.TestCase):
         self.assertEqual(hud._live_assistant_buffer, None)
 
 
+class TestCodeBlockAndBadges(unittest.TestCase):
+    def test_extract_last_code_block(self):
+        from modules.ui import _extract_last_code_block
+        text = "intro\n```python\nprint(1)\n```\nthen\n```\nx=2\n```"
+        self.assertEqual(_extract_last_code_block(text), "x=2\n")
+        self.assertIsNone(_extract_last_code_block("no code here"))
+
+    def test_latest_tool_badge_from_trace_dict(self):
+        hud = _bare_hud()
+        trace = {"tools_invoked": ["get_time", "read_file", "get_time"]}
+        with patch("modules.ui.get_latest_decision_trace", return_value=trace):
+            badge = hud._latest_tool_badge()
+        self.assertIn("get_time", badge)
+        self.assertIn("read_file", badge)
+        # De-duplicated
+        self.assertEqual(badge.count("get_time"), 1)
+
+    def test_latest_tool_badge_none_without_tools(self):
+        hud = _bare_hud()
+        with patch("modules.ui.get_latest_decision_trace", return_value={"tools_invoked": []}):
+            self.assertIsNone(hud._latest_tool_badge())
+        with patch("modules.ui.get_latest_decision_trace", return_value=None):
+            self.assertIsNone(hud._latest_tool_badge())
+
+    def test_append_chat_bubble_includes_badge(self):
+        hud = _bare_hud()
+        hud._append_chat_bubble("assistant", "Here is code:", badge="\u2699 tools invoked: x")
+        text = hud.response_box.get_text()
+        self.assertIn("tools invoked: x", text)
+        self.assertIn("\u2500" * 30, text)
+
+    def test_copy_last_code_block_copies_to_clipboard(self):
+        hud = _bare_hud()
+        hud._rendered_messages = [
+            {"role": "assistant", "content": "see\n```py\nprint('hi')\n```"},
+        ]
+        hud.update_ui = MagicMock()
+        hud._copy_last_code_block()
+        hud.root.clipboard_clear.assert_called_once()
+        hud.root.clipboard_append.assert_called_once_with("print('hi')\n")
+
+    def test_copy_last_code_block_reports_when_missing(self):
+        hud = _bare_hud()
+        hud._rendered_messages = [{"role": "assistant", "content": "no code"}]
+        hud.update_ui = MagicMock()
+        hud._copy_last_code_block()
+        hud.update_ui.assert_called_once()
+        args = hud.update_ui.call_args[0]
+        self.assertEqual(args[0], "NO CODE")
+        hud.root.clipboard_append.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

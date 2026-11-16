@@ -1,5 +1,38 @@
 [
   {
+    "role": "assistant",
+    "content": "Done."
+  },
+  {
+    "role": "user",
+    "content": "list files"
+  },
+  {
+    "role": "assistant",
+    "content": "<dots_function_call><list_directory></list></dots_function_call>"
+  },
+  {
+    "role": "tool",
+    "content": "file1.txt",
+    "name": "list_directory"
+  },
+  {
+    "role": "assistant",
+    "content": "<dots_function_call><list_directory></list></dots_function_call>"
+  },
+  {
+    "role": "assistant",
+    "content": "Done listing."
+  },
+  {
+    "role": "user",
+    "content": "hello world"
+  },
+  {
+    "role": "assistant",
+    "content": "Local response from Ollama."
+  },
+  {
     "role": "user",
     "content": "hello world"
   },
@@ -31,38 +64,5 @@
   {
     "role": "assistant",
     "content": "The directory has been listed."
-  },
-  {
-    "role": "user",
-    "content": "what time is it"
-  },
-  {
-    "role": "tool",
-    "content": "time_value"
-  },
-  {
-    "role": "assistant",
-    "content": "Done."
-  },
-  {
-    "role": "user",
-    "content": "list files"
-  },
-  {
-    "role": "assistant",
-    "content": "<dots_function_call><list_directory></list></dots_function_call>"
-  },
-  {
-    "role": "tool",
-    "content": "file1.txt",
-    "name": "list_directory"
-  },
-  {
-    "role": "assistant",
-    "content": "<dots_function_call><list_directory></list></dots_function_call>"
-  },
-  {
-    "role": "assistant",
-    "content": "Done listing."
   }
 ]

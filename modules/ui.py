@@ -31,9 +31,10 @@ ctk.set_default_color_theme("blue")
 class JarvisHUD:
     """J.A.R.V.I.S. Quantum HUD – floating desktop interface with working input."""
 
-    def __init__(self, root: ctk.CTk, command_callback=None):
+    def __init__(self, root: ctk.CTk, command_callback=None, stop_callback=None):
         self.root = root
         self.command_callback = command_callback
+        self.stop_callback = stop_callback
         self.visible = bool(get_runtime_state("visible", True))
         self.state = str(get_runtime_state("ui_state", "idle"))
         self.angle = 0
@@ -129,6 +130,13 @@ class JarvisHUD:
             command=self.toggle_review_panel
         )
         review_btn.pack(side="right", padx=(0, 6))
+
+        stop_btn = ctk.CTkButton(
+            actions, text="\u23f9", width=30, height=28, fg_color="transparent",
+            text_color="#ff6b6b", hover_color="#3d1a1a", font=("DejaVu Sans", 12, "bold"),
+            command=self._on_stop_click
+        )
+        stop_btn.pack(side="right", padx=(0, 6))
 
         hide_btn = ctk.CTkButton(
             actions, text="\u2014", width=30, height=28, fg_color="transparent",
@@ -416,6 +424,12 @@ class JarvisHUD:
         if ok:
             self.load_review_data()
             self.update_ui("REVIEW UPDATED", "idle", f"Reflection {reflection_id} marked reviewed.")
+
+    def _on_stop_click(self):
+        """Handler for the HUD STOP button."""
+        if self.stop_callback is not None:
+            self.stop_callback()
+        self.update_ui("STOPPED", "idle", "All autonomous subsystems halted.")
 
     def load_history_data(self):
         records = get_recent_history(limit=15)

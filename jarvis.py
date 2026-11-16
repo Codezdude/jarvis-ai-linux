@@ -24,6 +24,27 @@ scheduler = None
 voice_listener = None
 
 
+def request_stop() -> None:
+    """Stop all autonomous subsystems: scheduler, voice listener, and speech."""
+    global scheduler, voice_listener
+    log_info("JARVIS STOP requested — halting all autonomous subsystems...")
+    if scheduler is not None:
+        try:
+            scheduler.stop()
+        except Exception as e:
+            log_error(f"Error stopping scheduler: {e}")
+    if voice_listener is not None:
+        try:
+            voice_listener.stop()
+        except Exception as e:
+            log_error(f"Error stopping voice listener: {e}")
+    try:
+        stop_speaking()
+    except Exception as e:
+        log_error(f"Error stopping speech: {e}")
+    log_info("JARVIS STOP complete.")
+
+
 def process_command(query: str, hud_callback=None):
     """Autonomous agent router leveraging multi-step LLM tool-calling and memory integration."""
     global hud_instance, scheduler
@@ -186,7 +207,7 @@ if __name__ == "__main__":
 
     root = ctk.CTk()
     root.title("J.A.R.V.I.S. Quantum HUD")
-    hud_instance = JarvisHUD(root, command_callback=process_command)
+    hud_instance = JarvisHUD(root, command_callback=process_command, stop_callback=request_stop)
 
     try:
         scheduler = JarvisScheduler(

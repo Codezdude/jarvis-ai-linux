@@ -684,5 +684,33 @@
     "status": "approved-for-publish",
     "review_notes": "Ready to publish",
     "last_updated": "2026-11-16T19:26:01Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": false,
+    "status": "pending-approval",
+    "review_notes": "Awaiting human approval.",
+    "last_updated": "2026-11-16T20:00:09Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": true,
+    "status": "approved-for-publish",
+    "review_notes": "Ready to publish",
+    "last_updated": "2026-11-16T20:00:09Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": false,
+    "status": "pending-approval",
+    "review_notes": "Awaiting human approval.",
+    "last_updated": "2026-11-16T20:02:03Z"
+  },
+  {
+    "brand_name": "Nova Studio",
+    "approved": true,
+    "status": "approved-for-publish",
+    "review_notes": "Ready to publish",
+    "last_updated": "2026-11-16T20:02:03Z"
   }
 ]

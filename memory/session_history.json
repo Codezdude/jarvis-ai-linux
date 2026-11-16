@@ -1,67 +1,68 @@
 [
   {
     "role": "user",
-    "content": "what time is it"
-  },
-  {
-    "role": "tool",
-    "content": "time_value"
+    "content": "hello world"
   },
   {
     "role": "assistant",
-    "content": "Done."
+    "content": "Local response from Ollama."
   },
   {
     "role": "user",
-    "content": "list files"
+    "content": "hello world"
   },
   {
     "role": "assistant",
-    "content": "<dots_function_call><list_directory></list></dots_function_call>"
+    "content": "Fallback from Ollama."
+  },
+  {
+    "role": "user",
+    "content": "hello"
+  },
+  {
+    "role": "assistant",
+    "content": "Just a normal response."
+  },
+  {
+    "role": "user",
+    "content": "list the current directory"
+  },
+  {
+    "role": "assistant",
+    "content": "Let me check. <dots_function_call><list_directory></list></dots_function_call>"
   },
   {
     "role": "tool",
-    "content": "file1.txt",
+    "content": "file1.txt\nfile2.py",
     "name": "list_directory"
   },
   {
     "role": "assistant",
-    "content": "<dots_function_call><list_directory></list></dots_function_call>"
-  },
-  {
-    "role": "assistant",
-    "content": "Done listing."
+    "content": "The directory has been listed."
   },
   {
     "role": "user",
-    "content": "hello world"
+    "content": "hello"
   },
   {
     "role": "assistant",
-    "content": "Local response from Ollama."
+    "content": "Just a normal response."
   },
   {
     "role": "user",
-    "content": "hello world"
+    "content": "list the current directory"
   },
   {
     "role": "assistant",
-    "content": "Fallback from Ollama."
+    "content": "Let me check. <dots_function_call><list_directory></list></dots_function_call>"
   },
   {
-    "role": "user",
-    "content": "hello world"
-  },
-  {
-    "role": "assistant",
-    "content": "Local response from Ollama."
-  },
-  {
-    "role": "user",
-    "content": "hello world"
+    "role": "tool",
+    "content": "file1.txt\nfile2.py",
+    "name": "list_directory"
   },
   {
     "role": "assistant",
-    "content": "Fallback from Ollama."
+    "content": "The directory has been listed."
   }
 ]

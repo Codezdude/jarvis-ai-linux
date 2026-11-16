@@ -33,22 +33,6 @@
   },
   {
     "role": "user",
-    "content": "hello world"
-  },
-  {
-    "role": "assistant",
-    "content": "Local response from Ollama."
-  },
-  {
-    "role": "user",
-    "content": "hello world"
-  },
-  {
-    "role": "assistant",
-    "content": "Fallback from Ollama."
-  },
-  {
-    "role": "user",
     "content": "hi"
   },
   {
@@ -62,5 +46,21 @@
   {
     "role": "assistant",
     "content": "<dots_function_call>\n<list_directory>\n</list>\n</dots_function_call>"
+  },
+  {
+    "role": "user",
+    "content": "hello world"
+  },
+  {
+    "role": "assistant",
+    "content": "Local response from Ollama."
+  },
+  {
+    "role": "user",
+    "content": "hello world"
+  },
+  {
+    "role": "assistant",
+    "content": "Fallback from Ollama."
   }
 ]

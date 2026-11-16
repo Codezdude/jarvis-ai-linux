@@ -159,6 +159,17 @@ gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY and genai
 # Bound set_preference for AI-learned heuristics (source="ai", actor="autonomous_ai").
 # User preferences always take strict precedence; AI only fills unconfigured gaps.
 set_preference_ai = functools.partial(_set_preference_raw, source="ai", actor="autonomous_ai")
+functools.update_wrapper(set_preference_ai, _set_preference_raw)
+
+
+def _safe_tool_name(fn) -> str:
+    """Safely resolve a callable's name, handling functools.partial and unknown objects.
+
+    Gemini's ``GenerateContentConfig`` accesses ``__name__`` on each tool callable,
+    which fails for ``functools.partial`` objects.  This helper walks the partial
+    chain to find the underlying function's name, falling back to ``"unknown_tool"``.
+    """
+    return getattr(fn, "__name__", getattr(getattr(fn, "func", None), "__name__", "unknown_tool"))
 
 # Define available tools that the models can execute autonomously
 AVAILABLE_TOOLS = {
@@ -1863,6 +1874,11 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None) ->
                 gemini_prompt = "\n".join([f"{m['role']}: {m['content']}" for m in history if isinstance(m.get('content'), str)])
 
                 tool_callables = list(AVAILABLE_TOOLS.values())
+                for fn in tool_callables:
+                    if not getattr(fn, "__name__", None):
+                        safe = _safe_tool_name(fn)
+                        if safe == "unknown_tool":
+                            log_error(f"Gemini tool callable has no resolvable name: {fn!r}")
                 config = None
                 if hasattr(genai, "types") and hasattr(genai.types, "GenerateContentConfig"):
                     config = genai.types.GenerateContentConfig(

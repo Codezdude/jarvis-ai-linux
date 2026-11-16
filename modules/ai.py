@@ -2131,7 +2131,39 @@ def _extract_tool_from_xml_inner(inner: str) -> tuple[str | None, dict]:
     return (name, {}) if name else (None, {})
 
 
-def ask_local_brain_with_tools(query: str, force_provider: str | None = None, is_urgent: bool = True) -> str:
+def _apply_context_budget(history: list, max_context_tokens: int = 8192) -> list:
+    """Trim oldest turns so the prompt stays under 75% of the context budget.
+
+    System messages are always preserved; the most recent conversation turns are
+    kept until the token budget is reached.
+    """
+    try:
+        from modules.memory_consolidation import estimate_tokens
+    except Exception:
+        return history
+    threshold = int(max_context_tokens * 0.75)
+    if estimate_tokens(history) <= threshold:
+        return history
+    system_msgs = [m for m in history if m.get("role") == "system"]
+    convo = [m for m in history if m.get("role") != "system"]
+    budget = max(0, threshold - estimate_tokens(system_msgs))
+    kept = []
+    used = 0
+    for msg in reversed(convo):
+        cost = max(1, len(str(msg.get("content", ""))) // 4)
+        if kept and used + cost > budget:
+            break
+        kept.insert(0, msg)
+        used += cost
+    return system_msgs + kept
+
+
+def ask_local_brain_with_tools(
+    query: str,
+    force_provider: str | None = None,
+    is_urgent: bool = True,
+    session_id: str = "default",
+) -> str:
     """Choose the best available provider for the current request, executing a strict timeout and automatic failover loop.
 
     Args:
@@ -2139,6 +2171,8 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None, is
         force_provider: If set (e.g. ``"ollama"``), restrict the failover loop to only
             that provider, skipping cloud providers entirely. Used by autonomous
             background routines that must stay local.
+        session_id: Active chat session; used by the 75% context-budget guard to
+            compact stored history before prompt assembly.
 
     """
     save_user_profile_memory(query)
@@ -2156,6 +2190,17 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None, is
     history.append({"role": "user", "content": query})
 
     trimmed = trim_and_summarize_conversation(history)
+
+    # 75% context-budget guard: compact the stored session and trim in-memory history.
+    try:
+        from modules.memory_consolidation import enforce_context_budget, estimate_tokens
+
+        if estimate_tokens(trimmed) >= int(8192 * 0.75):
+            enforce_context_budget(session_id=session_id)
+    except Exception:
+        pass
+    trimmed = _apply_context_budget(trimmed, max_context_tokens=8192)
+
     relevant_context = get_relevant_memory_context(query)
     system_suffix = relevant_context
     if pref_block:

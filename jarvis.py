@@ -71,7 +71,7 @@ def _stream_reply_chunks(text: str, chunk_callback, words_per_chunk: int = 3, de
             time.sleep(delay)
 
 
-def process_command(query: str, hud_callback=None, chunk_callback=None):
+def process_command(query: str, hud_callback=None, chunk_callback=None, session_id: str = "default"):
     """Autonomous agent router leveraging multi-step LLM tool-calling and memory integration."""
     global hud_instance, scheduler
     q_lower = query.lower().strip()
@@ -157,10 +157,10 @@ def process_command(query: str, hud_callback=None, chunk_callback=None):
                             pass
                 response_text = "".join(parts)
                 if not response_text:
-                    response_text = ask_local_brain_with_tools(query)
+                    response_text = ask_local_brain_with_tools(query, session_id=session_id)
             else:
                 # Tool-capable queries keep the agentic loop; reveal the final reply.
-                response_text = ask_local_brain_with_tools(query)
+                response_text = ask_local_brain_with_tools(query, session_id=session_id)
                 _stream_reply_chunks(response_text, chunk_callback)
             if speak_allowed:
                 speak(response_text, hud_callback)

@@ -1,0 +1,37 @@
+[project]
+name = "jarvis"
+version = "0.1.0"
+description = "J.A.R.V.I.S. local-first autonomous AI assistant"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I", "C", "N", "D", "Q", "S", "T", "UP"]
+ignore = ["E501", "B008", "D100", "D101", "D102", "D103", "D104", "D105", "D209", "D401", "S108"]
+fixable = ["F", "I", "UP"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.flake8-import-conventions]
+strict = true
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D", "S"]
+
+[tool.mypy]
+python_version = 3.10
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_any_generics = true
+check_untyped_defs = true
+no_implicit_optional = true
+strict_equality = true
+
+[tool.mypy.override]
+"modules.*" = ["disallow_untyped_defs = true"]

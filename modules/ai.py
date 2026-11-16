@@ -3,6 +3,8 @@ import json
 import re
 import shutil
 import subprocess
+import threading
+import time
 from datetime import datetime
 
 try:
@@ -678,6 +680,28 @@ CONVERSATION_HISTORY = [
         ),
     }
 ]
+
+# Thread-safe lock for CONVERSATION_HISTORY mutations and snapshots
+CONVERSATION_LOCK = threading.Lock()
+
+
+def _snapshot_history() -> list[dict]:
+    """Return a shallow copy of CONVERSATION_HISTORY under lock."""
+    with CONVERSATION_LOCK:
+        return list(CONVERSATION_HISTORY)
+
+
+def _append_history(message: dict) -> None:
+    """Append a single message to CONVERSATION_HISTORY under lock."""
+    with CONVERSATION_LOCK:
+        CONVERSATION_HISTORY.append(message)
+
+
+def _replace_history(new_history: list[dict]) -> None:
+    """Replace CONVERSATION_HISTORY entirely under lock."""
+    with CONVERSATION_LOCK:
+        CONVERSATION_HISTORY.clear()
+        CONVERSATION_HISTORY.extend(new_history)
 
 
 def _clean_message_text(message: dict) -> str:
@@ -1395,21 +1419,49 @@ def choose_provider_order(query: str, available_providers: list[str] | None = No
     if any(keyword in q for keyword in offline_keywords):
         scores["ollama"] = scores.get("ollama", 0) + 11
 
+    # Explicit model name mentions boost ollama routing
+    if any(kw in q for kw in ("llama3.2", "llama 3.2", "qwen2.5", "qwen 2.5")):
+        scores["ollama"] = scores.get("ollama", 0) + 15
+
     fallback_order = {"groq": 0, "gemini": 1, "kilo": 2, "cloudflare": 3, "agy": 4, "ollama": 5}
     return sorted(available, key=lambda provider: (-scores.get(provider, 0), fallback_order.get(provider, 99)))
 
 
+def _select_ollama_model(query: str) -> str:
+    """Select the Ollama model based on query complexity.
+
+    Lightweight/fast tasks use llama3.2:3b; complex reasoning uses qwen2.5:7b.
+    """
+    complex_keywords = (
+        "code", "coding", "debug", "debugging", "bug", "fix", "error", "python",
+        "javascript", "typescript", "refactor", "syntax", "function", "class",
+        "program", "script", "build", "test", "patch", "exception",
+        "analyze", "analysis", "research", "complex", "reasoning", "architecture",
+        "design", "implement", "optimize", "performance", "security",
+        "write a", "create a", "generate", "explain how", "step by step",
+    )
+    q = (query or "").lower()
+    if any(kw in q for kw in complex_keywords):
+        return "qwen2.5:7b"
+    return "llama3.2:3b"
+
+
 def ask_local_brain_with_tools(query: str) -> str:
     """Choose the best available provider for the current request, executing a strict timeout and automatic failover loop."""
-    global CONVERSATION_HISTORY
     save_user_profile_memory(query)
-    CONVERSATION_HISTORY.append({"role": "user", "content": query})
+
+    # Take a thread-safe snapshot of conversation history for this request
+    history = _snapshot_history()
+    history.append({"role": "user", "content": query})
 
     relevant_context = get_relevant_memory_context(query)
     if relevant_context:
-        CONVERSATION_HISTORY = [{"role": "system", "content": relevant_context}] + trim_and_summarize_conversation(CONVERSATION_HISTORY)
+        history = [{"role": "system", "content": relevant_context}] + trim_and_summarize_conversation(history)
     else:
-        CONVERSATION_HISTORY = trim_and_summarize_conversation(CONVERSATION_HISTORY)
+        history = trim_and_summarize_conversation(history)
+
+    # Persist the trimmed history back under lock
+    _replace_history(history)
 
     provider_order = choose_provider_order(query, get_available_providers())
     if not provider_order:
@@ -1428,7 +1480,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                 print("[ROUTER] Attempting Groq Cloud...")
                 response = groq_client.chat.completions.create(
                     model=CLOUD_MODEL_GROQ,
-                    messages=CONVERSATION_HISTORY,
+                    messages=history,
                     tools=TOOL_SCHEMAS,
                     tool_choice="auto",
                     timeout=12.0,
@@ -1436,69 +1488,75 @@ def ask_local_brain_with_tools(query: str) -> str:
                 message = response.choices[0].message
 
                 if message.tool_calls:
-                    tool_call = message.tool_calls[0]
-                    func_name = tool_call.function.name
-                    func_args = json.loads(tool_call.function.arguments or "{}")
-                    print(f"[GROQ AGENT] Tool selected: {func_name}")
+                    # Execute all tool calls, not just the first one
+                    tool_messages = [{"role": "assistant", "content": message.content or "", "tool_calls": message.tool_calls}]
+                    for tool_call in message.tool_calls:
+                        func_name = tool_call.function.name
+                        func_args = json.loads(tool_call.function.arguments or "{}")
+                        print(f"[GROQ AGENT] Tool selected: {func_name}")
 
-                    if func_name in AVAILABLE_TOOLS:
-                        tool_result = AVAILABLE_TOOLS[func_name](**func_args) if func_args else AVAILABLE_TOOLS[func_name]()
-                        CONVERSATION_HISTORY.append({"role": "assistant", "content": message.content, "tool_calls": message.tool_calls})
-                        CONVERSATION_HISTORY.append({"role": "tool", "content": str(tool_result), "tool_call_id": tool_call.id})
+                        if func_name in AVAILABLE_TOOLS:
+                            tool_result = AVAILABLE_TOOLS[func_name](**func_args) if func_args else AVAILABLE_TOOLS[func_name]()
+                            tool_messages.append({"role": "tool", "content": str(tool_result), "tool_call_id": tool_call.id})
 
-                        final_response = groq_client.chat.completions.create(
-                            model=CLOUD_MODEL_GROQ,
-                            messages=CONVERSATION_HISTORY,
-                            timeout=12.0,
-                        )
-                        reply = final_response.choices[0].message.content
-                        reply = cognitive_review_loop(query, reply)
-                        CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
-                        return reply
+                    # Append all assistant + tool messages atomically under lock
+                    with CONVERSATION_LOCK:
+                        CONVERSATION_HISTORY.extend(tool_messages)
+                        history = list(CONVERSATION_HISTORY)
+
+                    final_response = groq_client.chat.completions.create(
+                        model=CLOUD_MODEL_GROQ,
+                        messages=history,
+                        timeout=12.0,
+                    )
+                    reply = final_response.choices[0].message.content
+                    reply = cognitive_review_loop(query, reply)
+                    _append_history({"role": "assistant", "content": reply})
+                    return reply
 
                 reply = message.content
                 reply = cognitive_review_loop(query, reply)
-                CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
+                _append_history({"role": "assistant", "content": reply})
                 set_active_provider(provider)
                 return reply
 
             if provider == "cloudflare":
                 print("[ROUTER] Attempting Cloudflare Workers AI...")
-                reply = call_cloudflare_workers_ai(CONVERSATION_HISTORY)
+                reply = call_cloudflare_workers_ai(history)
                 if reply:
                     reply = cognitive_review_loop(query, reply)
-                    CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
+                    _append_history({"role": "assistant", "content": reply})
                     set_active_provider(provider)
                     return reply
 
             if provider == "kilo":
                 print("[ROUTER] Attempting Kilo AI Gateway...")
-                reply = call_kilo_gateway(CONVERSATION_HISTORY)
+                reply = call_kilo_gateway(history)
                 if reply:
                     reply = cognitive_review_loop(query, reply)
-                    CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
+                    _append_history({"role": "assistant", "content": reply})
                     set_active_provider(provider)
                     return reply
 
             if provider == "agy":
                 print("[ROUTER] Attempting Google Subscription (Antigravity CLI)...")
-                reply = call_antigravity_cli(CONVERSATION_HISTORY)
+                reply = call_antigravity_cli(history)
                 if reply:
                     reply = cognitive_review_loop(query, reply)
-                    CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
+                    _append_history({"role": "assistant", "content": reply})
                     set_active_provider(provider)
                     return reply
 
             if provider == "gemini":
                 print("[ROUTER] Attempting Google Gemini Cloud...")
-                gemini_prompt = "\n".join([f"{m['role']}: {m['content']}" for m in CONVERSATION_HISTORY if isinstance(m.get('content'), str)])
+                gemini_prompt = "\n".join([f"{m['role']}: {m['content']}" for m in history if isinstance(m.get('content'), str)])
 
                 tool_callables = list(AVAILABLE_TOOLS.values())
                 config = None
                 if hasattr(genai, "types") and hasattr(genai.types, "GenerateContentConfig"):
                     config = genai.types.GenerateContentConfig(
                         tools=tool_callables,
-                        system_instruction=CONVERSATION_HISTORY[0]["content"] if CONVERSATION_HISTORY else None,
+                        system_instruction=history[0]["content"] if history else None,
                     )
 
                 response = gemini_client.models.generate_content(
@@ -1508,36 +1566,41 @@ def ask_local_brain_with_tools(query: str) -> str:
                 )
 
                 if getattr(response, "function_calls", None):
-                    tool_call = response.function_calls[0]
-                    fn_name = tool_call.name
-                    fn_args = dict(tool_call.args) if tool_call.args else {}
-                    print(f"[GEMINI AGENT] Tool selected: {fn_name}")
+                    # Execute all function calls, not just the first one
+                    tool_messages = [{"role": "assistant", "content": f"Invoked tools: {', '.join(fc.name for fc in response.function_calls)}"}]
+                    for tool_call in response.function_calls:
+                        fn_name = tool_call.name
+                        fn_args = dict(tool_call.args) if tool_call.args else {}
+                        print(f"[GEMINI AGENT] Tool selected: {fn_name}")
 
-                    if fn_name in AVAILABLE_TOOLS:
-                        tool_result = AVAILABLE_TOOLS[fn_name](**fn_args) if fn_args else AVAILABLE_TOOLS[fn_name]()
-                        CONVERSATION_HISTORY.append({"role": "assistant", "content": f"Invoked tool {fn_name}"})
-                        CONVERSATION_HISTORY.append({"role": "tool", "content": str(tool_result), "name": fn_name})
+                        if fn_name in AVAILABLE_TOOLS:
+                            tool_result = AVAILABLE_TOOLS[fn_name](**fn_args) if fn_args else AVAILABLE_TOOLS[fn_name]()
+                            tool_messages.append({"role": "tool", "content": str(tool_result), "name": fn_name})
 
-                        follow_up = gemini_client.models.generate_content(
-                            model=CLOUD_MODEL_GEMINI,
-                            contents=[
-                                gemini_prompt,
-                                response.candidates[0].content,
-                                genai.types.Part.from_function_response(
-                                    name=fn_name,
-                                    response={"result": str(tool_result)},
-                                ),
-                            ],
-                            config=config,
-                        )
-                        reply = follow_up.text or str(tool_result)
-                        reply = cognitive_review_loop(query, reply)
-                        CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
-                        return reply
+                    with CONVERSATION_LOCK:
+                        CONVERSATION_HISTORY.extend(tool_messages)
+                        history = list(CONVERSATION_HISTORY)
+
+                    follow_up = gemini_client.models.generate_content(
+                        model=CLOUD_MODEL_GEMINI,
+                        contents=[
+                            gemini_prompt,
+                            response.candidates[0].content,
+                            genai.types.Part.from_function_response(
+                                name=response.function_calls[0].name,
+                                response={"result": str(tool_messages[-1]["content"]) if tool_messages else ""},
+                            ),
+                        ],
+                        config=config,
+                    )
+                    reply = follow_up.text or str(tool_messages[-1]["content"]) if tool_messages else "Completed, Sir."
+                    reply = cognitive_review_loop(query, reply)
+                    _append_history({"role": "assistant", "content": reply})
+                    return reply
 
                 reply = response.text or "Completed, Sir."
                 reply = cognitive_review_loop(query, reply)
-                CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
+                _append_history({"role": "assistant", "content": reply})
                 set_active_provider(provider)
                 return reply
 
@@ -1546,32 +1609,42 @@ def ask_local_brain_with_tools(query: str) -> str:
                 if ollama is None:
                     continue
 
+                ollama_model = _select_ollama_model(query)
+                print(f"[ROUTER] Selected Ollama model: {ollama_model}")
+
                 response = ollama.chat(
-                    model=MODEL_NAME,
-                    messages=sanitize_fallback_messages(CONVERSATION_HISTORY),
+                    model=ollama_model,
+                    messages=sanitize_fallback_messages(history),
                     tools=TOOL_SCHEMAS,
                 )
 
-                if response.get("message", {}).get("tool_calls"):
-                    tool_call = response["message"]["tool_calls"][0]
-                    func_name = tool_call["function"]["name"]
-                    func_args = tool_call["function"]["arguments"]
-                    print(f"[LOCAL AGENT] Tool selected: {func_name}")
+                message = response.get("message", {})
+                tool_calls = message.get("tool_calls")
+                if tool_calls:
+                    # Execute all tool calls, not just the first one
+                    tool_messages = [dict(message)]
+                    for tool_call in tool_calls:
+                        func_name = tool_call["function"]["name"]
+                        func_args = tool_call["function"]["arguments"]
+                        print(f"[LOCAL AGENT] Tool selected: {func_name}")
 
-                    if func_name in AVAILABLE_TOOLS:
-                        tool_result = AVAILABLE_TOOLS[func_name](**func_args) if func_args else AVAILABLE_TOOLS[func_name]()
-                        CONVERSATION_HISTORY.append(response["message"])
-                        CONVERSATION_HISTORY.append({"role": "tool", "content": str(tool_result), "name": func_name})
+                        if func_name in AVAILABLE_TOOLS:
+                            tool_result = AVAILABLE_TOOLS[func_name](**func_args) if func_args else AVAILABLE_TOOLS[func_name]()
+                            tool_messages.append({"role": "tool", "content": str(tool_result), "name": func_name})
 
-                        final_response = ollama.chat(model=MODEL_NAME, messages=sanitize_fallback_messages(CONVERSATION_HISTORY))
-                        reply = final_response["message"]["content"]
-                        reply = cognitive_review_loop(query, reply)
-                        CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
-                        return reply
+                    with CONVERSATION_LOCK:
+                        CONVERSATION_HISTORY.extend(tool_messages)
+                        history = list(CONVERSATION_HISTORY)
 
-                reply = response["message"]["content"]
+                    final_response = ollama.chat(model=ollama_model, messages=sanitize_fallback_messages(history))
+                    reply = final_response["message"]["content"]
+                    reply = cognitive_review_loop(query, reply)
+                    _append_history({"role": "assistant", "content": reply})
+                    return reply
+
+                reply = message.get("content", "")
                 reply = cognitive_review_loop(query, reply)
-                CONVERSATION_HISTORY.append({"role": "assistant", "content": reply})
+                _append_history({"role": "assistant", "content": reply})
                 set_active_provider(provider)
                 return reply
 

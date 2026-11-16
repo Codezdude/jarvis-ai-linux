@@ -1796,7 +1796,7 @@ def _extract_tool_from_xml_inner(inner: str) -> tuple[str | None, dict]:
         args = {}
         if attr_str:
             attr_pairs = re.findall(r'(\w+)="([^"]*)"', attr_str)
-            args = {k: v for k, v in attr_pairs}
+            args = dict(attr_pairs)
         inner_tags = re.findall(r"<(\w+)>(.*?)</\1>", inner, re.DOTALL)
         for tag, val in inner_tags:
             if tag not in args:

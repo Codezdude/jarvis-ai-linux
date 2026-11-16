@@ -9,3 +9,5 @@
 [CYCLE 5] Target: modules/ui.py | Change: Added weekly review panel with toggle button, load_review_data() displaying unreviewed failures via get_reflections_for_review(), and mark_reviewed() via mark_reflection_reviewed() | Tests: PASS 37 (baseline 37) | Installs: none | Next: Cycle 6 - add HUD STOP button wiring + request_stop() function, or run_reactive_tick() in scheduler
 
 [CYCLE 6] Target: modules/scheduler.py | Change: Added run_reactive_tick() function that mines failure corpus and checks budget status, callable from scheduler loop or jarvis.py main loop | Tests: PASS 37 (baseline 37) | Installs: none | Next: Cycle 7 - add HUD STOP button with request_stop() function in jarvis.py/scheduler.py
+
+[CYCLE 7] Target: jarvis.py, modules/ui.py | Change: Added request_stop() function in jarvis.py (stops scheduler, voice listener, speech); passed as stop_callback to JarvisHUD; added STOP button in HUD header wired to _on_stop_click() | Tests: PASS 37 (baseline 37) | Installs: none | Next: Cycle 8 - add unit tests for recover_interrupted_goals() and run_reactive_tick() (coverage gap)

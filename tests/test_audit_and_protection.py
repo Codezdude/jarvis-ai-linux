@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from modules.audit import log_audit_event, query_audit_log, explain_event, DecisionTrace
+from modules.approval import register_ui_prompt_callback
 from modules.tools import is_protected_path, safe_write_file, PROJECT_ROOT
 
 
@@ -15,7 +16,14 @@ class TestAuditAndProtectedRouting(unittest.TestCase):
         self.audit_patcher = patch("modules.audit.DEFAULT_AUDIT_LOG", self.audit_file)
         self.audit_patcher.start()
 
+        # Auto-approving UI callback so the approval gate permits writes under test
+        def _auto_approve(payload):
+            return True
+
+        register_ui_prompt_callback(_auto_approve)
+
     def tearDown(self):
+        register_ui_prompt_callback(None)
         self.audit_patcher.stop()
         self.temp_dir.cleanup()
 

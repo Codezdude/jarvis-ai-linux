@@ -12,6 +12,7 @@ from config.settings import ASSETS_DIR, CODE_DIR, SAFE_MODE
 from typing import Any, Dict, List, Optional
 
 from modules.audit import log_audit_event
+from modules.approval import check_approval
 
 # Non-bypassable protected codebase patterns relative to PROJECT_ROOT
 PROTECTED_GLOBS: list[str] = [
@@ -596,14 +597,17 @@ def safe_write_file(
     filepath: str,
     content: str,
     actor: str = "user",
+    source: str = "user",
     reason: str = "file modification",
+    signed_token: Optional[str] = None,
     memory_ids: Optional[List[int]] = None,
     preference_keys: Optional[List[str]] = None,
     provider_info: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Unified file write gateway for all tools, plugins, and autonomous routines.
-    - Protected files (jarvis.py, modules/*.py, tests/*.py) MUST route through
+    - Every write is evaluated by the approval gate (check_approval) before execution.
+    - Protected files (jarvis.py, modules/*.py, tests/*.py) route through
       learning.py's backup -> compile() -> test -> rollback pipeline.
     - Non-protected workspace/data files write directly.
     - Every operation is recorded in audit.jsonl.
@@ -614,8 +618,28 @@ def safe_write_file(
         else os.path.realpath(os.path.join(PROJECT_ROOT, filepath))
     )
     rel_display = _normalize_rel_path(abs_target) or abs_target
+    protected = is_protected_path(abs_target)
 
-    if is_protected_path(abs_target):
+    gate = check_approval(
+        action="protected_file_route" if protected else "file_write",
+        target=abs_target,
+        actor=actor,
+        source=source,
+        reason=reason,
+        is_protected_file=protected,
+        signed_token=signed_token,
+    )
+    if not gate["approved"]:
+        return {
+            "success": False,
+            "blocked_by_approval_gate": True,
+            "risk_tier": gate["risk_tier"],
+            "method": gate["method"],
+            "path": rel_display,
+            "audit_event_id": gate["audit_event_id"],
+        }
+
+    if protected:
         # Lazy import prevents circular dependency between tools.py and learning.py
         from modules import learning
 

@@ -24,27 +24,38 @@ class ImageGeneratorTestBase(unittest.TestCase):
 
 
 class TestPollinationsTier(ImageGeneratorTestBase):
+    def _fake_response(self, payload):
+        class _Resp:
+            def __init__(self, data):
+                self._data = data
+
+            def read(self):
+                return self._data
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        return _Resp(payload)
+
     def test_try_pollinations_raises_on_tiny_payload(self):
-        with patch("modules.tools.urllib.request.urlopen") as mock_open:
-            mock_open.return_value.read.return_value = b"nope"
+        with patch("modules.tools.urllib.request.urlopen", return_value=self._fake_response(b"nope")):
             with self.assertRaises(RuntimeError):
                 T._try_pollinations_image("a prompt")
 
     def test_try_pollinations_returns_bytes_on_success(self):
         png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 4000
-        with patch("modules.tools.urllib.request.urlopen") as mock_open:
-            mock_open.return_value.read.return_value = png_bytes
+        with patch("modules.tools.urllib.request.urlopen", return_value=self._fake_response(png_bytes)):
             data = T._try_pollinations_image("a prompt")
         self.assertEqual(data, png_bytes)
 
     def test_generate_image_uses_pollinations_when_available(self):
         png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 4000
-        with patch("modules.tools.urllib.request.urlopen") as mock_open:
-            mock_open.return_value.read.return_value = png_bytes
-            with patch.dict(os.environ, {"ASSETS_DIR": str(self.assets)}):
-                # ASSETS_DIR is imported at module load time, so patch the module attr
-                with patch.object(T, "ASSETS_DIR", self.assets):
-                    result = T.generate_image(prompt="ai topic", filename="ai.png")
+        with patch("modules.tools.urllib.request.urlopen", return_value=self._fake_response(png_bytes)):
+            with patch.object(T, "ASSETS_DIR", self.assets):
+                result = T.generate_image(prompt="ai topic", filename="ai.png")
         self.assertTrue((self.assets / "ai.png").exists())
         self.assertIn("assets/ai.png", result)
 

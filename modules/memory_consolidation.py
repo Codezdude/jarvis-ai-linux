@@ -93,11 +93,18 @@ def compact_session_if_needed(
 
 
 def enforce_context_budget(session_id: str = "default", max_context_tokens: int = 8192, db_path: str = None) -> bool:
-    """Compact the session if it exceeds 75% of the token budget. Returns True if compacted."""
+    """Compact the session when it reaches 75% of the token budget.
+
+    Returns True when the threshold is crossed (compaction is attempted with a
+    small keep-recent window so the active prompt stays within budget).
+    """
     db_path = db_path or DEFAULT_DB_PATH
     messages = _fetch_session_messages(session_id, db_path)
-    if estimate_tokens(messages) > int(max_context_tokens * 0.75):
-        return compact_session_if_needed(session_id=session_id, db_path=db_path) is not None
+    if estimate_tokens(messages) >= int(max_context_tokens * 0.75):
+        compact_session_if_needed(
+            session_id=session_id, max_messages=6, keep_recent=4, db_path=db_path
+        )
+        return True
     return False
 
 

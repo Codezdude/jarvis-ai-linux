@@ -1194,7 +1194,7 @@ class JarvisHUD:
         if self.command_callback:
             threading.Thread(
                 target=self.command_callback,
-                args=(query, self.update_ui, self.push_chunk),
+                args=(query, self.update_ui, self.push_chunk, self._current_session_id),
                 daemon=True,
             ).start()
 
@@ -1206,7 +1206,7 @@ class JarvisHUD:
                 if query:
                     self.update_ui("PROCESSING", "thinking", f"> {query}")
                     if self.command_callback:
-                        self.command_callback(query, self.update_ui, self.push_chunk)
+                        self.command_callback(query, self.update_ui, self.push_chunk, self._current_session_id)
                 else:
                     self.update_ui("STANDBY // LISTENING", "idle", "Audio input unclear, Sir.")
             except Exception as e:

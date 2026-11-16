@@ -12,6 +12,34 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_DB_PATH = os.path.join(PROJECT_ROOT, "data", "jarvis_memory.db")
 
 _GOALS_LOCK = threading.Lock()
+_STOP_EVENT = threading.Event()
+
+
+def request_stop() -> None:
+    """Set the global stop flag to halt autonomous goal processing."""
+    _STOP_EVENT.set()
+    log_audit_event(
+        actor="system",
+        action="goal_stop_requested",
+        outcome="success",
+        metadata={},
+    )
+
+
+def clear_stop() -> None:
+    """Clear the global stop flag to resume autonomous goal processing."""
+    _STOP_EVENT.clear()
+    log_audit_event(
+        actor="system",
+        action="goal_stop_cleared",
+        outcome="success",
+        metadata={},
+    )
+
+
+def is_stopped() -> bool:
+    """Return True if the global stop flag is set."""
+    return _STOP_EVENT.is_set()
 
 
 def _get_connection(db_path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:

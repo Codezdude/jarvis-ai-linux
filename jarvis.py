@@ -9,7 +9,7 @@ import customtkinter as ctk
 
 from config.settings import SAFE_MODE
 from modules.ai import ask_local_brain_with_tools
-from modules.goals import recover_interrupted_goals
+from modules.goals import recover_interrupted_goals, request_stop as goals_request_stop, clear_stop
 from modules.listener import ContinuousVoiceListener
 from modules.logger import log_error, log_info
 from modules.memory import init_db, recall_memories, save_interaction, save_memory
@@ -28,6 +28,7 @@ def request_stop() -> None:
     """Stop all autonomous subsystems: scheduler, voice listener, and speech."""
     global scheduler, voice_listener
     log_info("JARVIS STOP requested — halting all autonomous subsystems...")
+    goals_request_stop()
     if scheduler is not None:
         try:
             scheduler.stop()
@@ -189,6 +190,12 @@ if __name__ == "__main__":
             log_info(f"Recovered {recovered} interrupted goal(s) back to pending.")
     except Exception as e:
         log_error(f"Goal recovery failed: {e}")
+
+    # Clear any lingering stop flag so autonomous goals can run
+    try:
+        clear_stop()
+    except Exception as e:
+        log_error(f"Failed to clear stop flag: {e}")
 
     # Hydrate previously synthesized dynamic tools into the live registry
     try:

@@ -31,10 +31,11 @@ ctk.set_default_color_theme("blue")
 class JarvisHUD:
     """J.A.R.V.I.S. Quantum HUD – floating desktop interface with working input."""
 
-    def __init__(self, root: ctk.CTk, command_callback=None, stop_callback=None):
+    def __init__(self, root: ctk.CTk, command_callback=None, stop_callback=None, resume_callback=None):
         self.root = root
         self.command_callback = command_callback
         self.stop_callback = stop_callback
+        self.resume_callback = resume_callback
         self.visible = bool(get_runtime_state("visible", True))
         self.state = str(get_runtime_state("ui_state", "idle"))
         self.angle = 0

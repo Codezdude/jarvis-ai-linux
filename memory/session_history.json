@@ -1,13 +1,5 @@
 [
   {
-    "role": "assistant",
-    "content": "<dots_function_call><list_directory></list></dots_function_call>"
-  },
-  {
-    "role": "assistant",
-    "content": "Done listing."
-  },
-  {
     "role": "user",
     "content": "hello world"
   },
@@ -55,5 +47,13 @@
   {
     "role": "assistant",
     "content": "Yes, Sir, I do. I just listed it for you."
+  },
+  {
+    "role": "user",
+    "content": "\"Draft and schedule an Instagram post about 3 simple daily habits for better sleep for 2 minutes from now.\""
+  },
+  {
+    "role": "assistant",
+    "content": "<dots_function_call>\n<list_directory>\n</list>"
   }
 ]

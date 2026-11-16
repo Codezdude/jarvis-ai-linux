@@ -41,6 +41,18 @@ def _git_output(args: list[str], cwd: Path = PROJECT_ROOT, timeout: int = 8) -> 
         return ""
 
 
+def _is_watched_path(rel_path: str) -> bool:
+    """True only for code/config targets, never runtime state."""
+    rel = (rel_path or "").replace("\\", "/").strip()
+    if not rel:
+        return False
+    if rel == "jarvis.py" or rel == "data/mcp_servers.json":
+        return True
+    if rel.startswith("modules/") and rel.endswith(".py") and "__pycache__" not in rel:
+        return True
+    return False
+
+
 def _scan_watched_files(root: Path = PROJECT_ROOT) -> tuple[float, list[str]]:
     candidates: list[Path] = []
     entry = root / "jarvis.py"
@@ -84,20 +96,28 @@ def detect_available_update(
 ) -> Optional[dict]:
     """Return update metadata dict if code/config changed since boot, else None."""
     global _LAST_REMOTE_CHECK_TS
+    global _BOOT_HEAD
     if not _BOOT_HEAD and _BOOT_MTIME == 0.0:
         init_update_baseline(root)
 
     reasons: list[str] = []
     changed_files: list[str] = []
 
-    # 1. Local git HEAD moved forward since boot
+    # 1. Local git HEAD moved forward since boot — but only count commits that
+    #    actually touch watched code/config. The 5-minute auto-push cron commits
+    #    runtime state (memory/, data/, generated_code/) constantly; those must
+    #    never be reported as an update.
     current_head = _git_output(["rev-parse", "HEAD"], cwd=root)
     if _BOOT_HEAD and current_head and current_head != _BOOT_HEAD:
-        summary = _git_output(["log", "-1", "--pretty=%h %s"], cwd=root) or current_head[:8]
-        reasons.append(f"New commit active on disk ({summary})")
         diff_names = _git_output(["diff", "--name-only", _BOOT_HEAD, current_head], cwd=root)
-        if diff_names:
-            changed_files.extend(ln.strip() for ln in diff_names.splitlines() if ln.strip())
+        code_changes = [ln.strip() for ln in diff_names.splitlines() if _is_watched_path(ln.strip())]
+        if code_changes:
+            summary = _git_output(["log", "-1", "--pretty=%h %s"], cwd=root) or current_head[:8]
+            reasons.append(f"New commit active on disk ({summary})")
+            changed_files.extend(code_changes)
+        else:
+            # Runtime-only commits: advance the baseline so we don't re-diff them.
+            _BOOT_HEAD = current_head
 
     # 2. Watched Python or MCP config files edited on disk after boot
     max_mtime, modified_since_boot = _scan_watched_files(root)

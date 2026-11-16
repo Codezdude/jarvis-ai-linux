@@ -1434,13 +1434,38 @@ class JarvisHUD:
         return "\n".join(lines)
 
     def _on_ui_prompt(self, payload: Dict[str, Any]) -> bool:
-        """Modal confirmation handler for approval gate UI prompts."""
+        """Modal confirmation handler for approval gate UI prompts.
+
+        Tkinter may only be touched from the main thread, but approval prompts can
+        arrive from scheduler/update-worker threads. When that happens, marshal the
+        dialog onto the main thread via ``root.after`` and block the caller on an
+        event so the approval gate still gets a synchronous answer.
+        """
         import tkinter.messagebox as msgbox
-        confirmed = msgbox.askyesno(
-            "JARVIS Approval Required",
-            self._format_approval_prompt(payload),
-        )
-        return bool(confirmed)
+
+        message = self._format_approval_prompt(payload)
+        if threading.current_thread() is threading.main_thread():
+            return bool(msgbox.askyesno("JARVIS Approval Required", message))
+
+        answer = {"approved": False}
+        done = threading.Event()
+
+        def _show_dialog():
+            try:
+                answer["approved"] = bool(
+                    msgbox.askyesno("JARVIS Approval Required", message)
+                )
+            except Exception:
+                answer["approved"] = False
+            finally:
+                done.set()
+
+        try:
+            self.root.after(0, _show_dialog)
+        except Exception:
+            return False
+        done.wait(timeout=300)
+        return bool(answer["approved"])
 
     def _on_budget_alert(self, payload: Dict[str, Any]) -> None:
         """HUD notification handler for budget limit / breaker trips."""

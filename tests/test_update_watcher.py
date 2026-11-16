@@ -171,6 +171,60 @@ class TestCheckAndRequestRestart(UpdateWatcherTestBase):
         self.assertEqual(approvals["n"], 0)
 
 
+class TestRuntimeOnlyCommits(UpdateWatcherTestBase):
+    """The 5-minute auto-push cron commits runtime state constantly; only
+    code/config commits may count as an update."""
+
+    def _fake_git_factory(self, head, diff_output):
+        def _fake_git(args, cwd=None, timeout=8):
+            if args[:2] == ["rev-parse", "HEAD"]:
+                return head
+            if args[:1] == ["diff"]:
+                return diff_output
+            if args[:1] == ["log"]:
+                return f"{head[:7]} some commit"
+            return ""
+
+        return _fake_git
+
+    def test_runtime_only_commit_does_not_trigger(self):
+        uw.init_update_baseline(self.root)
+        uw._BOOT_HEAD = "aaa111"
+        diff = "memory/jarvis_memory.db\ndata/trigger_state.json\ngenerated_code/bot.json\n"
+
+        with patch.object(uw, "_git_output", side_effect=self._fake_git_factory("bbb222", diff)):
+            self.assertIsNone(uw.detect_available_update(root=self.root))
+
+        # Baseline advances so the same runtime-only commit is not re-examined.
+        self.assertEqual(uw._BOOT_HEAD, "bbb222")
+
+    def test_code_commit_triggers_and_filters_runtime_files(self):
+        uw.init_update_baseline(self.root)
+        uw._BOOT_HEAD = "aaa111"
+        diff = "modules/core.py\nmemory/jarvis_memory.db\nREADME.md\ndata/trigger_state.json\n"
+
+        with patch.object(uw, "_git_output", side_effect=self._fake_git_factory("bbb222", diff)):
+            info = uw.detect_available_update(root=self.root)
+
+        self.assertIsNotNone(info)
+        self.assertIn("modules/core.py", info["changed_files"])
+        self.assertNotIn("memory/jarvis_memory.db", info["changed_files"])
+        self.assertNotIn("data/trigger_state.json", info["changed_files"])
+        self.assertNotIn("README.md", info["changed_files"])
+
+    def test_is_watched_path_matrix(self):
+        self.assertTrue(uw._is_watched_path("jarvis.py"))
+        self.assertTrue(uw._is_watched_path("modules/foo.py"))
+        self.assertTrue(uw._is_watched_path("modules/pkg/bar.py"))
+        self.assertTrue(uw._is_watched_path("data/mcp_servers.json"))
+        self.assertFalse(uw._is_watched_path("memory/jarvis_memory.db"))
+        self.assertFalse(uw._is_watched_path("logs/jarvis.log"))
+        self.assertFalse(uw._is_watched_path("data/trigger_state.json"))
+        self.assertFalse(uw._is_watched_path("modules/__pycache__/foo.pyc"))
+        self.assertFalse(uw._is_watched_path("modules/foo.txt"))
+        self.assertFalse(uw._is_watched_path(""))
+
+
 class TestApprovalHookAdapter(UpdateWatcherTestBase):
     def test_adapts_to_check_approval_dict_result(self):
         from modules import approval

@@ -150,5 +150,43 @@ class TestMicMuteAndTranscript(unittest.TestCase):
         hud.root.after.assert_called()
 
 
+class TestApprovalPromptThreadSafety(unittest.TestCase):
+    def test_worker_thread_prompt_marshals_to_main_thread(self):
+        import threading
+
+        hud = _bare_hud()
+        # Simulate the Tk mainloop invoking the queued callback immediately.
+        hud.root.after.side_effect = lambda delay, cb: cb()
+
+        result = {}
+        with patch("tkinter.messagebox.askyesno", return_value=True) as mock_ask:
+            worker = threading.Thread(
+                target=lambda: result.update(ok=hud._on_ui_prompt({"action": "restart_jarvis"}))
+            )
+            worker.start()
+            worker.join(10)
+
+        self.assertFalse(worker.is_alive(), "worker deadlocked waiting for the dialog")
+        self.assertTrue(result.get("ok"))
+        mock_ask.assert_called_once()
+
+    def test_worker_thread_prompt_denied(self):
+        import threading
+
+        hud = _bare_hud()
+        hud.root.after.side_effect = lambda delay, cb: cb()
+
+        result = {}
+        with patch("tkinter.messagebox.askyesno", return_value=False):
+            worker = threading.Thread(
+                target=lambda: result.update(ok=hud._on_ui_prompt({"action": "restart_jarvis"}))
+            )
+            worker.start()
+            worker.join(10)
+
+        self.assertFalse(worker.is_alive())
+        self.assertFalse(result.get("ok"))
+
+
 if __name__ == "__main__":
     unittest.main()

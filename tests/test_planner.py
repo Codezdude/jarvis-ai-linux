@@ -7,7 +7,7 @@ from unittest.mock import patch
 from modules.approval import init_approval_db
 from modules.audit import query_audit_log
 from modules.budget import init_budget_db, record_budget_usage
-from modules.goals import init_goals_db, enqueue_goal, get_goal
+from modules.goals import enqueue_goal, get_goal, init_goals_db
 from modules.planner import planned_step_executor
 from modules.preferences import set_preference
 from modules.scheduler import process_one_idle_goal
@@ -119,7 +119,7 @@ class TestPlanExecuteVerifyReplan(unittest.TestCase):
 
     def test_exceeding_max_replans_fails_goal_cleanly(self):
         set_preference("user", "planner.max_replans_per_goal", 1, db_path=self.db_path)
-        goal = enqueue_goal("Unreachable external target", source="self", priority=60, db_path=self.db_path)
+        enqueue_goal("Unreachable external target", source="self", priority=60, db_path=self.db_path)
 
         def fake_planner(_desc, _ctx):
             return [{"description": "Attempt impossible step", "expected_outcome": "Success"}]

@@ -7,7 +7,12 @@ from modules.approval import AutonomyLevel, init_approval_db, set_autonomy_level
 from modules.audit import query_audit_log
 from modules.budget import init_budget_db
 from modules.tool_synthesis import init_dynamic_tools_db, synthesize_and_register_tool
-from modules.tools import DYNAMIC_TOOL_REGISTRY, get_all_dynamic_tool_schemas, get_dynamic_tool, PROJECT_ROOT
+from modules.tools import (
+    DYNAMIC_TOOL_REGISTRY,
+    PROJECT_ROOT,
+    get_all_dynamic_tool_schemas,
+    get_dynamic_tool,
+)
 
 
 class TestToolSynthesisPipeline(unittest.TestCase):
@@ -138,7 +143,7 @@ class TestToolSynthesisPipeline(unittest.TestCase):
         self.assertTrue(res["rolled_back"])
         self.assertIsNone(get_dynamic_tool(tool_name))
 
-        with open(module_path, "r", encoding="utf-8") as f:
+        with open(module_path, encoding="utf-8") as f:
             self.assertEqual(f.read(), "# Original clean module\nEXISTING = 42\n")
 
         test_file = os.path.join(self.mock_tests_dir, f"test_synthesized_{tool_name}.py")

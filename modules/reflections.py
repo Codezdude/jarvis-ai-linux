@@ -4,7 +4,8 @@ import os
 import re
 import sqlite3
 import threading
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from modules.audit import log_audit_event
 from modules.budget import record_budget_usage
@@ -16,7 +17,7 @@ DEFAULT_DB_PATH = os.path.join(PROJECT_ROOT, "data", "jarvis_memory.db")
 
 _REFLECTIONS_LOCK = threading.Lock()
 
-RUBRIC_WEIGHTS: Dict[str, float] = {
+RUBRIC_WEIGHTS: dict[str, float] = {
     "completeness": 0.35,
     "tool_accuracy": 0.25,
     "preference_alignment": 0.20,
@@ -77,7 +78,7 @@ def init_reflections_db(db_path: str = DEFAULT_DB_PATH) -> None:
             conn.commit()
 
 
-def _compute_weighted_score(scores: Dict[str, float]) -> float:
+def _compute_weighted_score(scores: dict[str, float]) -> float:
     total = 0.0
     for dim, weight in RUBRIC_WEIGHTS.items():
         val = max(0.0, min(1.0, float(scores.get(dim, 0.0))))
@@ -88,8 +89,8 @@ def _compute_weighted_score(scores: Dict[str, float]) -> float:
 def _heuristic_rubric_fallback(
     task_description: str,
     output: str,
-    execution_error: Optional[str] = None,
-) -> Dict[str, Any]:
+    execution_error: str | None = None,
+) -> dict[str, Any]:
     """Deterministic scorer used if local Ollama output cannot be parsed as JSON."""
     text = (output or "").strip()
     if execution_error or not text:
@@ -124,10 +125,10 @@ def _heuristic_rubric_fallback(
 def _ollama_rubric_scorer(
     task_description: str,
     output: str,
-    execution_error: Optional[str] = None,
-    goal_id: Optional[str] = None,
+    execution_error: str | None = None,
+    goal_id: str | None = None,
     db_path: str = DEFAULT_DB_PATH,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Uses local Ollama exclusively to grade task output against the rubric."""
     from modules.ai import ask_local_brain
 
@@ -184,13 +185,12 @@ def evaluate_task_rubric(
     goal_id: str,
     task_description: str,
     output: str,
-    execution_error: Optional[str] = None,
-    scorer_fn: Optional[Callable[[str, str, Optional[str]], Dict[str, Any]]] = None,
-    pass_threshold: Optional[float] = None,
+    execution_error: str | None = None,
+    scorer_fn: Callable[[str, str, str | None], dict[str, Any]] | None = None,
+    pass_threshold: float | None = None,
     db_path: str = DEFAULT_DB_PATH,
-) -> Dict[str, Any]:
-    """
-    Scores an autonomous task output against the rubric and stores the reflection.
+) -> dict[str, Any]:
+    """Scores an autonomous task output against the rubric and stores the reflection.
     Failed evaluations (overall_score < pass_threshold or execution_error is set)
     are archived in the failure corpus for pattern mining and weekly HUD review.
     """
@@ -219,7 +219,7 @@ def evaluate_task_rubric(
 
     root_cause = "" if passed else (eval_data.get("root_cause") or execution_error or "Score below threshold.")
     remediation = "none" if passed else eval_data.get("proposed_remediation", "prompt_adjustment")
-    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    now_iso = datetime.datetime.now(datetime.UTC).isoformat()
 
     with _REFLECTIONS_LOCK:
         with _get_connection(db_path) as conn:
@@ -277,14 +277,13 @@ def evaluate_task_rubric(
 def mine_failure_corpus(
     min_occurrences: int = 2,
     db_path: str = DEFAULT_DB_PATH,
-) -> List[Dict[str, Any]]:
-    """
-    Scans unmined failure reflections, clusters them by failure_mode, and converts
+) -> list[dict[str, Any]]:
+    """Scans unmined failure reflections, clusters them by failure_mode, and converts
     recurring failure modes (>= min_occurrences) into actionable self-improvement goals
     (new unit tests, prompt adjustments, or tool-schema updates).
     """
     init_reflections_db(db_path)
-    created_goals: List[Dict[str, Any]] = []
+    created_goals: list[dict[str, Any]] = []
 
     with _REFLECTIONS_LOCK:
         with _get_connection(db_path) as conn:
@@ -297,7 +296,7 @@ def mine_failure_corpus(
                 """
             ).fetchall()
 
-            clusters: Dict[str, List[sqlite3.Row]] = {}
+            clusters: dict[str, list[sqlite3.Row]] = {}
             for row in rows:
                 clusters.setdefault(row["failure_mode"], []).append(row)
 
@@ -325,11 +324,11 @@ def mine_failure_corpus(
                 )
 
                 reflection_ids = [int(r["id"]) for r in items]
-                placeholders = ",".join("?" for _ in reflection_ids)
-                conn.execute(
-                    f"UPDATE reflections SET mined_into_goal_id = ? WHERE id IN ({placeholders})",
-                    [goal["id"], *reflection_ids],
-                )
+                for reflection_id in reflection_ids:
+                    conn.execute(
+                        "UPDATE reflections SET mined_into_goal_id = ? WHERE id = ?",
+                        [goal["id"], reflection_id],
+                    )
                 conn.commit()
 
                 log_audit_event(
@@ -363,10 +362,10 @@ def get_reflections_for_review(
     unreviewed_only: bool = True,
     failures_only: bool = False,
     db_path: str = DEFAULT_DB_PATH,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Fetches reflections for the HUD weekly human review surface."""
     init_reflections_db(db_path)
-    clauses: List[str] = []
+    clauses: list[str] = []
     if unreviewed_only:
         clauses.append("reviewed_by_human = 0")
     if failures_only:

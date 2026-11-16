@@ -6,14 +6,13 @@ from unittest.mock import patch
 from modules.approval import init_approval_db
 from modules.audit import query_audit_log
 from modules.budget import init_budget_db
-from modules.goals import init_goals_db, get_goal
-from modules.preferences import set_preference
+from modules.goals import get_goal, init_goals_db
 from modules.reflections import (
-    init_reflections_db,
     evaluate_task_rubric,
-    mine_failure_corpus,
     get_reflections_for_review,
+    init_reflections_db,
     mark_reflection_reviewed,
+    mine_failure_corpus,
 )
 
 

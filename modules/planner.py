@@ -1,7 +1,8 @@
 import json
 import os
 import re
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from modules.audit import log_audit_event
 from modules.budget import check_budget, record_budget_usage
@@ -16,7 +17,7 @@ def _estimate_tokens(*texts: str) -> int:
     return max(1, total_chars // 4)
 
 
-def _extract_json_array(raw_text: str) -> Optional[List[Dict[str, Any]]]:
+def _extract_json_array(raw_text: str) -> list[dict[str, Any]] | None:
     match = re.search(r"\[.*\]", str(raw_text), flags=re.DOTALL)
     if not match:
         return None
@@ -29,7 +30,7 @@ def _extract_json_array(raw_text: str) -> Optional[List[Dict[str, Any]]]:
     return None
 
 
-def _extract_json_object(raw_text: str) -> Optional[Dict[str, Any]]:
+def _extract_json_object(raw_text: str) -> dict[str, Any] | None:
     match = re.search(r"\{.*\}", str(raw_text), flags=re.DOTALL)
     if not match:
         return None
@@ -42,8 +43,8 @@ def _extract_json_object(raw_text: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _normalize_plan_steps(raw_steps: List[Dict[str, Any]], max_steps: int) -> List[Dict[str, Any]]:
-    normalized: List[Dict[str, Any]] = []
+def _normalize_plan_steps(raw_steps: list[dict[str, Any]], max_steps: int) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
     for idx, item in enumerate(raw_steps[:max_steps], start=1):
         desc = str(item.get("description", "")).strip()
         if not desc:
@@ -64,14 +65,14 @@ def _normalize_plan_steps(raw_steps: List[Dict[str, Any]], max_steps: int) -> Li
 
 def decompose_goal(
     goal_description: str,
-    context: Optional[Dict[str, Any]] = None,
+    context: dict[str, Any] | None = None,
     max_steps: int = 8,
-    planner_fn: Optional[Callable[[str, Dict[str, Any]], List[Dict[str, Any]]]] = None,
-    goal_id: Optional[str] = None,
+    planner_fn: Callable[[str, dict[str, Any]], list[dict[str, Any]]] | None = None,
+    goal_id: str | None = None,
     db_path: str = DEFAULT_DB_PATH,
-) -> List[Dict[str, Any]]:
-    """
-    Decomposes a goal into an ordered list of verifiable steps.
+) -> list[dict[str, Any]]:
+    """Decomposes a goal into an ordered list of verifiable steps.
+
     Uses local Ollama by default and records token consumption against budget.py.
     """
     ctx = context or {}
@@ -120,14 +121,13 @@ def decompose_goal(
 
 
 def execute_plan_step(
-    goal: Dict[str, Any],
-    step: Dict[str, Any],
-    prior_steps: List[Dict[str, Any]],
-    executor_fn: Optional[Callable[[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]]], str]] = None,
+    goal: dict[str, Any],
+    step: dict[str, Any],
+    prior_steps: list[dict[str, Any]],
+    executor_fn: Callable[[dict[str, Any], dict[str, Any], list[dict[str, Any]]], str] | None = None,
     db_path: str = DEFAULT_DB_PATH,
 ) -> str:
-    """
-    Executes a single planned step using prior verified outputs as context.
+    """Executes a single planned step using prior verified outputs as context.
     Autonomous goals run strictly on local Ollama.
     """
     if executor_fn is not None:
@@ -160,14 +160,13 @@ def execute_plan_step(
 
 def verify_step_output(
     goal_description: str,
-    step: Dict[str, Any],
+    step: dict[str, Any],
     step_output: str,
-    verifier_fn: Optional[Callable[[Dict[str, Any], str], Dict[str, Any]]] = None,
-    goal_id: Optional[str] = None,
+    verifier_fn: Callable[[dict[str, Any], str], dict[str, Any]] | None = None,
+    goal_id: str | None = None,
     db_path: str = DEFAULT_DB_PATH,
-) -> Dict[str, Any]:
-    """
-    Checks whether `step_output` satisfies `step['expected_outcome']` before proceeding.
+) -> dict[str, Any]:
+    """Checks whether `step_output` satisfies `step['expected_outcome']` before proceeding.
     Returns {'verified': bool, 'reason': str}.
     """
     if verifier_fn is not None:
@@ -188,7 +187,7 @@ def verify_step_output(
 
     prompt = (
         "You are J.A.R.V.I.S.'s Step Verifier. Determine if the step output satisfies the "
-        "expected outcome. Respond strictly as JSON: {\"verified\": true|false, \"reason\": \"...\"}.\n\n"
+        'expected outcome. Respond strictly as JSON: {"verified": true|false, "reason": "..."}.\n\n'
         f"Goal: {goal_description}\n"
         f"Step: {step['description']}\n"
         f"Expected Outcome: {step['expected_outcome']}\n"
@@ -214,16 +213,15 @@ def verify_step_output(
 
 def replan_from_failure(
     goal_description: str,
-    completed_steps: List[Dict[str, Any]],
-    failed_step: Dict[str, Any],
+    completed_steps: list[dict[str, Any]],
+    failed_step: dict[str, Any],
     failure_reason: str,
     remaining_step_budget: int,
-    replan_fn: Optional[Callable[[str, List[Dict[str, Any]], Dict[str, Any], str], List[Dict[str, Any]]]] = None,
-    goal_id: Optional[str] = None,
+    replan_fn: Callable[[str, list[dict[str, Any]], dict[str, Any], str], list[dict[str, Any]]] | None = None,
+    goal_id: str | None = None,
     db_path: str = DEFAULT_DB_PATH,
-) -> List[Dict[str, Any]]:
-    """
-    Generates a revised sequence of steps starting from the failure point,
+) -> list[dict[str, Any]]:
+    """Generates a revised sequence of steps starting from the failure point,
     preserving already completed work.
     """
     budget = max(1, remaining_step_budget)
@@ -272,17 +270,16 @@ def replan_from_failure(
 
 
 def planned_step_executor(
-    goal: Dict[str, Any],
+    goal: dict[str, Any],
     step_index: int,
-    checkpoint: Dict[str, Any],
-    planner_fn: Optional[Callable[[str, Dict[str, Any]], List[Dict[str, Any]]]] = None,
-    executor_fn: Optional[Callable[[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]]], str]] = None,
-    verifier_fn: Optional[Callable[[Dict[str, Any], str], Dict[str, Any]]] = None,
-    replan_fn: Optional[Callable[[str, List[Dict[str, Any]], Dict[str, Any], str], List[Dict[str, Any]]]] = None,
+    checkpoint: dict[str, Any],
+    planner_fn: Callable[[str, dict[str, Any]], list[dict[str, Any]]] | None = None,
+    executor_fn: Callable[[dict[str, Any], dict[str, Any], list[dict[str, Any]]], str] | None = None,
+    verifier_fn: Callable[[dict[str, Any], str], dict[str, Any]] | None = None,
+    replan_fn: Callable[[str, list[dict[str, Any]], dict[str, Any], str], list[dict[str, Any]]] | None = None,
     db_path: str = DEFAULT_DB_PATH,
-) -> Dict[str, Any]:
-    """
-    Plugs into modules/scheduler.py's process_one_idle_goal(...) loop.
+) -> dict[str, Any]:
+    """Plugs into modules/scheduler.py's process_one_idle_goal(...) loop.
     Performs one bounded Plan -> Execute -> Verify -> Replan cycle per call,
     mutating `checkpoint` in place so scheduler.py persists it immediately.
     """
@@ -304,7 +301,7 @@ def planned_step_executor(
         checkpoint["plan_cursor"] = 0
         checkpoint["replan_count"] = 0
 
-    plan: List[Dict[str, Any]] = checkpoint["plan"]
+    plan: list[dict[str, Any]] = checkpoint["plan"]
     cursor: int = int(checkpoint.get("plan_cursor", 0))
 
     if cursor >= len(plan):

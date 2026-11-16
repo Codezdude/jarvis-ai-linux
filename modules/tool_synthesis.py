@@ -8,14 +8,15 @@ import re
 import sqlite3
 import threading
 import unittest
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any
 
 from modules.approval import check_approval
 from modules.audit import log_audit_event
 from modules.budget import check_budget, record_budget_usage
 from modules.tools import (
-    PROJECT_ROOT,
     DYNAMIC_TOOL_REGISTRY,
+    PROJECT_ROOT,
     register_dynamic_tool,
     safe_write_file,
 )
@@ -76,8 +77,7 @@ def _validate_tool_name(tool_name: str) -> None:
 
 
 def _validate_ast_and_compile(tool_name: str, function_code: str, test_code: str) -> None:
-    """
-    Validates syntax via compile() and inspects the AST to guarantee:
+    """Validates syntax via compile() and inspects the AST to guarantee:
     1. Both function_code and test_code compile cleanly.
     2. A top-level function matching `tool_name` is defined.
     3. No forbidden shell/eval execution primitives appear in the synthesized tool.
@@ -86,6 +86,11 @@ def _validate_ast_and_compile(tool_name: str, function_code: str, test_code: str
     compile(test_code, f"<synthesized_test:{tool_name}>", "exec")
 
     tree = ast.parse(function_code)
+    _check_ast_forbidden(tree, tool_name)
+
+
+def _check_ast_forbidden(tree: ast.AST, tool_name: str) -> None:
+    """Walks the AST to enforce safety rules on synthesized tool code."""
     defined_funcs = [
         node.name for node in tree.body if isinstance(node, ast.FunctionDef)
     ]
@@ -112,9 +117,9 @@ def _validate_ast_and_compile(tool_name: str, function_code: str, test_code: str
 def _draft_tool_with_ollama(
     capability_description: str,
     tool_name: str,
-    goal_id: Optional[str] = None,
+    goal_id: str | None = None,
     db_path: str = DEFAULT_DB_PATH,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Uses local Ollama exclusively to draft the Python tool, schema, and unittest."""
     from modules.ai import ask_local_brain
 
@@ -147,7 +152,7 @@ def _draft_tool_with_ollama(
     return json.loads(match.group(0))
 
 
-def _run_isolated_test_file(test_file_path: str) -> Dict[str, Any]:
+def _run_isolated_test_file(test_file_path: str) -> dict[str, Any]:
     """Executes unittest against the newly synthesized test file and captures results."""
     test_dir = os.path.dirname(os.path.abspath(test_file_path))
     test_pattern = os.path.basename(test_file_path)
@@ -194,15 +199,14 @@ def synthesize_and_register_tool(
     capability_description: str,
     actor: str = "autonomous_worker",
     source: str = "self",
-    goal_id: Optional[str] = None,
-    generator_fn: Optional[Callable[[str, str], Dict[str, Any]]] = None,
-    signed_token: Optional[str] = None,
+    goal_id: str | None = None,
+    generator_fn: Callable[[str, str], dict[str, Any]] | None = None,
+    signed_token: str | None = None,
     module_path: str = DYNAMIC_TOOLS_MODULE_PATH,
     tests_dir: str = TESTS_DIR,
     db_path: str = DEFAULT_DB_PATH,
-) -> Dict[str, Any]:
-    """
-    End-to-end Tool Synthesis pipeline:
+) -> dict[str, Any]:
+    """End-to-end Tool Synthesis pipeline:
     1. Checks budget (self_mod) and approval gate (elevated self-modification).
     2. Drafts function + unit test (via generator_fn or local Ollama).
     3. Validates syntax via compile() and AST safety rules.
@@ -255,150 +259,33 @@ def synthesize_and_register_tool(
     had_prior_module = os.path.exists(module_path)
     prior_module_content = ""
     if had_prior_module:
-        with open(module_path, "r", encoding="utf-8") as f:
+        with open(module_path, encoding="utf-8") as f:
             prior_module_content = f.read()
 
     had_prior_test = os.path.exists(test_path)
     prior_test_content = ""
     if had_prior_test:
-        with open(test_path, "r", encoding="utf-8") as f:
+        with open(test_path, encoding="utf-8") as f:
             prior_test_content = f.read()
 
     with _SYNTHESIS_LOCK:
         try:
-            # 2. Draft code & test
-            draft = (
-                generator_fn(capability_description, tool_name)
-                if generator_fn is not None
-                else _draft_tool_with_ollama(
-                    capability_description, tool_name, goal_id=goal_id, db_path=db_path
-                )
-            )
-            function_code = str(draft.get("function_code", "")).strip()
-            test_code = str(draft.get("test_code", "")).strip()
-            description = str(draft.get("description", capability_description)).strip()
-            parameters_schema = draft.get(
-                "parameters_schema", {"type": "object", "properties": {}}
-            )
-
-            # 3. Validate syntax with compile() & AST inspection
-            _validate_ast_and_compile(tool_name, function_code, test_code)
-
-            # 4. Write protected files via safe_write_file (routes through learning.py)
-            base_header = (
-                prior_module_content
-                if had_prior_module
-                else '"""Auto-synthesized dynamic tools managed by J.A.R.V.I.S."""\n'
-            )
-            updated_module_content = (
-                f"{base_header.rstrip()}\n\n\n"
-                f"# Synthesized tool: {tool_name}\n"
-                f"{function_code}\n"
-            )
-
-            mod_write = safe_write_file(
-                filepath=module_path,
-                content=updated_module_content,
-                actor=actor,
-                source=source,
-                reason=f"Synthesize tool function '{tool_name}'",
-                signed_token=signed_token,
-                db_path=db_path,
-            )
-            if not mod_write.get("success"):
-                raise RuntimeError(f"Protected write failed for {module_path}: {mod_write}")
-
-            test_write = safe_write_file(
-                filepath=test_path,
-                content=test_code + "\n",
-                actor=actor,
-                source=source,
-                reason=f"Add unit test for synthesized tool '{tool_name}'",
-                signed_token=signed_token,
-                db_path=db_path,
-            )
-            if not test_write.get("success"):
-                raise RuntimeError(f"Protected write failed for {test_path}: {test_write}")
-
-            # 5. Execute the synthesized unit test suite
-            test_res = _run_isolated_test_file(test_path)
-            if not test_res["passed"]:
-                raise RuntimeError(
-                    f"Synthesized unit tests failed (runs={test_res['tests_run']}, "
-                    f"failures={test_res['failures']}, errors={test_res['errors']}):\n"
-                    f"{test_res['output'][-600:]}"
-                )
-
-            # 6. Hot-load callable and register in SQLite + DYNAMIC_TOOL_REGISTRY
-            spec = importlib.util.spec_from_file_location("modules.dynamic_tools", module_path)
-            if spec is None or spec.loader is None:
-                raise RuntimeError(f"Unable to load module spec from {module_path}")
-            dyn_mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(dyn_mod)
-
-            tool_callable = getattr(dyn_mod, tool_name, None)
-            if not callable(tool_callable):
-                raise RuntimeError(f"Function '{tool_name}' not found after loading {module_path}")
-
-            register_dynamic_tool(
+            return _execute_synthesis_pipeline(
                 tool_name=tool_name,
-                func=tool_callable,
-                description=description,
-                parameters_schema=parameters_schema,
-            )
-
-            now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-            with _get_connection(db_path) as conn:
-                conn.execute(
-                    """
-                    INSERT INTO dynamic_tools
-                    (tool_name, description, parameters_schema_json, module_path, test_path, status, created_by_goal_id, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)
-                    ON CONFLICT(tool_name) DO UPDATE SET
-                        description = excluded.description,
-                        parameters_schema_json = excluded.parameters_schema_json,
-                        status = 'active',
-                        updated_at = excluded.updated_at
-                    """,
-                    (
-                        tool_name,
-                        description,
-                        json.dumps(parameters_schema, ensure_ascii=False),
-                        os.path.relpath(module_path, PROJECT_ROOT),
-                        os.path.relpath(test_path, PROJECT_ROOT),
-                        goal_id,
-                        now_iso,
-                        now_iso,
-                    ),
-                )
-                conn.commit()
-
-            record_budget_usage(
-                "self_mod", actor=actor, goal_id=goal_id, amount=1, db_path=db_path
-            )
-
-            event_id = log_audit_event(
+                capability_description=capability_description,
                 actor=actor,
-                action="tool_synthesized",
-                outcome="success",
-                paths_touched=[
-                    os.path.relpath(module_path, PROJECT_ROOT),
-                    os.path.relpath(test_path, PROJECT_ROOT),
-                ],
-                metadata={
-                    "tool_name": tool_name,
-                    "goal_id": goal_id,
-                    "tests_run": test_res["tests_run"],
-                },
+                source=source,
+                goal_id=goal_id,
+                generator_fn=generator_fn,
+                module_path=module_path,
+                test_path=test_path,
+                db_path=db_path,
+                signed_token=signed_token,
+                had_prior_module=had_prior_module,
+                prior_module_content=prior_module_content,
+                had_prior_test=had_prior_test,
+                prior_test_content=prior_test_content,
             )
-
-            return {
-                "success": True,
-                "tool_name": tool_name,
-                "tests_run": test_res["tests_run"],
-                "audit_event_id": event_id,
-            }
-
         except Exception as exc:
             _rollback_synthesis_files(
                 module_path=module_path,
@@ -432,3 +319,154 @@ def synthesize_and_register_tool(
                 "error": str(exc),
                 "audit_event_id": event_id,
             }
+
+
+def _execute_synthesis_pipeline(
+    tool_name: str,
+    capability_description: str,
+    actor: str,
+    source: str,
+    goal_id: str | None,
+    generator_fn: Any,
+    module_path: str,
+    test_path: str,
+    db_path: str,
+    signed_token: str | None,
+    had_prior_module: bool,
+    prior_module_content: str,
+    had_prior_test: bool,
+    prior_test_content: str,
+) -> dict[str, Any]:
+    """Drafts, validates, writes, tests, and registers a synthesized tool."""
+    # 2. Draft code & test
+    draft = (
+        generator_fn(capability_description, tool_name)
+        if generator_fn is not None
+        else _draft_tool_with_ollama(
+            capability_description, tool_name, goal_id=goal_id, db_path=db_path
+        )
+    )
+    function_code = str(draft.get("function_code", "")).strip()
+    test_code = str(draft.get("test_code", "")).strip()
+    description = str(draft.get("description", capability_description)).strip()
+    parameters_schema = draft.get(
+        "parameters_schema", {"type": "object", "properties": {}}
+    )
+
+    # 3. Validate syntax with compile() & AST inspection
+    _validate_ast_and_compile(tool_name, function_code, test_code)
+
+    # 4. Write protected files via safe_write_file (routes through learning.py)
+    base_header = (
+        prior_module_content
+        if had_prior_module
+        else '"""Auto-synthesized dynamic tools managed by J.A.R.V.I.S."""\n'
+    )
+    updated_module_content = (
+        f"{base_header.rstrip()}\n\n\n"
+        f"# Synthesized tool: {tool_name}\n"
+        f"{function_code}\n"
+    )
+
+    mod_write = safe_write_file(
+        filepath=module_path,
+        content=updated_module_content,
+        actor=actor,
+        source=source,
+        reason=f"Synthesize tool function '{tool_name}'",
+        signed_token=signed_token,
+        db_path=db_path,
+    )
+    if not mod_write.get("success"):
+        raise RuntimeError(f"Protected write failed for {module_path}: {mod_write}")
+
+    test_write = safe_write_file(
+        filepath=test_path,
+        content=test_code + "\n",
+        actor=actor,
+        source=source,
+        reason=f"Add unit test for synthesized tool '{tool_name}'",
+        signed_token=signed_token,
+        db_path=db_path,
+    )
+    if not test_write.get("success"):
+        raise RuntimeError(f"Protected write failed for {test_path}: {test_write}")
+
+    # 5. Execute the synthesized unit test suite
+    test_res = _run_isolated_test_file(test_path)
+    if not test_res["passed"]:
+        raise RuntimeError(
+            f"Synthesized unit tests failed (runs={test_res['tests_run']}, "
+            f"failures={test_res['failures']}, errors={test_res['errors']}):\n"
+            f"{test_res['output'][-600:]}"
+        )
+
+    # 6. Hot-load callable and register in SQLite + DYNAMIC_TOOL_REGISTRY
+    spec = importlib.util.spec_from_file_location("modules.dynamic_tools", module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load module spec from {module_path}")
+    dyn_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(dyn_mod)
+
+    tool_callable = getattr(dyn_mod, tool_name, None)
+    if not callable(tool_callable):
+        raise RuntimeError(f"Function '{tool_name}' not found after loading {module_path}")
+
+    register_dynamic_tool(
+        tool_name=tool_name,
+        func=tool_callable,
+        description=description,
+        parameters_schema=parameters_schema,
+    )
+
+    now_iso = datetime.datetime.now(datetime.UTC).isoformat()
+    with _get_connection(db_path) as conn:
+        conn.execute(
+            """
+            INSERT INTO dynamic_tools
+            (tool_name, description, parameters_schema_json, module_path, test_path, status, created_by_goal_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)
+            ON CONFLICT(tool_name) DO UPDATE SET
+                description = excluded.description,
+                parameters_schema_json = excluded.parameters_schema_json,
+                status = 'active',
+                updated_at = excluded.updated_at
+            """,
+            (
+                tool_name,
+                description,
+                json.dumps(parameters_schema, ensure_ascii=False),
+                os.path.relpath(module_path, PROJECT_ROOT),
+                os.path.relpath(test_path, PROJECT_ROOT),
+                goal_id,
+                now_iso,
+                now_iso,
+            ),
+        )
+        conn.commit()
+
+    record_budget_usage(
+        "self_mod", actor=actor, goal_id=goal_id, amount=1, db_path=db_path
+    )
+
+    event_id = log_audit_event(
+        actor=actor,
+        action="tool_synthesized",
+        outcome="success",
+        paths_touched=[
+            os.path.relpath(module_path, PROJECT_ROOT),
+            os.path.relpath(test_path, PROJECT_ROOT),
+        ],
+        metadata={
+            "tool_name": tool_name,
+            "goal_id": goal_id,
+            "tests_run": test_res["tests_run"],
+        },
+    )
+
+    return {
+        "success": True,
+        "tool_name": tool_name,
+        "tests_run": test_res["tests_run"],
+        "audit_event_id": event_id,
+    }

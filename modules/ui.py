@@ -1,3 +1,4 @@
+from modules.ai import get_active_provider, set_preferred_provider
 import math
 import queue
 import threading
@@ -5,6 +6,7 @@ import time
 import customtkinter as ctk
 import psutil
 
+from modules.ai import get_active_provider
 from modules.logger import log_error, log_info
 from modules.voice import speak, set_voice_enabled, get_voice_enabled
 from modules.memory import (
@@ -61,11 +63,11 @@ class JarvisHUD:
         set_runtime_state("preferred_provider", self.preferred_provider)
 
         # Window Setup (floating shell)
-        self.root.overrideredirect(True)
+        self.root.overrideredirect(False)
         self.root.attributes("-topmost", True)
         self.root.attributes("-alpha", self.current_opacity)
 
-        # X11/Cinnamon focus fix: overrideredirect windows need explicit focus management
+        # X11/Cinnamon focus fix: ensure keyboard input works on Linux Mint
         self.root.bind("<Button-1>", lambda event: self.root.focus_force())
         self.root.bind("<FocusIn>", lambda event: self.cmd_entry.focus_set() if hasattr(self, 'cmd_entry') else None)
         self.root.bind("<FocusOut>", lambda event: None)  # prevent focus steal on click-away

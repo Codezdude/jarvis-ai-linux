@@ -1,3 +1,4 @@
+from modules.memory import get_runtime_state, set_runtime_state
 """Interruptible TTS for JARVIS: Kokoro with pyttsx3 fallback, speech interrupt, and echo suppression."""
 
 import re
@@ -7,7 +8,7 @@ import sounddevice as sd
 
 from config.settings import LANG_CODE, SPEECH_RATE, VOICE_ID
 from modules.logger import log_error, log_info
-from modules.memory import get_preference, set_runtime_state
+from modules.memory import get_preference, get_runtime_state, set_runtime_state
 
 IS_SPEAKING = threading.Event()
 STOP_SPEECH = threading.Event()

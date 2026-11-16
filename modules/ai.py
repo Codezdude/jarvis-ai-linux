@@ -1152,21 +1152,27 @@ def get_relevant_memory_context(query: str) -> str:
         if isinstance(summary, str) and len(summary.strip()) > 5:
             memory_lines.append(f"Reflection memory ({category}): {query_text[:120]} -> {summary[:220]}")
 
-    semantic_matches = []
+    # Hybrid retrieval: fuse semantic (vector) + lexical (keyword) recall via RRF.
     try:
-        from modules.vector_memory import semantic_search, summarize_semantic_matches
-        semantic_matches = semantic_search(query, limit=4)
-        if semantic_matches:
-            memory_lines.append(summarize_semantic_matches(query, semantic_matches, limit=3))
-    except Exception:
-        semantic_matches = []
+        from modules.memory import hybrid_recall
 
-    lower_query = query.lower()
-    for category in ["topic_context", "profile", "analytics"]:
-        matches = search_memories(lower_query, limit=10)
-        for _, value, _ in matches:
-            if isinstance(value, str) and len(value) > 3:
-                memory_lines.append(value)
+        for content in hybrid_recall(query, limit=6):
+            if isinstance(content, str) and len(content) > 3:
+                memory_lines.append("Recalled memory: " + content)
+    except Exception:
+        # Fallback to the legacy semantic + keyword retrieval if fusion is unavailable.
+        try:
+            from modules.vector_memory import semantic_search, summarize_semantic_matches
+
+            semantic_matches = semantic_search(query, limit=4)
+            if semantic_matches:
+                memory_lines.append(summarize_semantic_matches(query, semantic_matches, limit=3))
+        except Exception:
+            pass
+        for _category in ["topic_context", "profile", "analytics"]:
+            for _, value, _ in search_memories(query.lower(), limit=10):
+                if isinstance(value, str) and len(value) > 3:
+                    memory_lines.append(value)
 
     deduped = []
     seen = set()

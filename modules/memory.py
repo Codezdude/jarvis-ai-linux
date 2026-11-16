@@ -536,6 +536,51 @@ def search_memories(query: str, limit: int = 20):
     return rows
 
 
+def hybrid_recall(query: str, limit: int = 6):
+    """Fuse lexical (keyword) and semantic (vector) retrieval via Reciprocal Rank Fusion.
+
+    Returns a ranked, de-duplicated list of content strings (best first). This is
+    the "hybrid" leg of long-term memory: keyword matches contribute exact-term
+    recall while vector matches contribute semantic recall, combined by RRF so a
+    document found by both ranks highest.
+    """
+    if not query or not str(query).strip():
+        return []
+
+    lexical = []
+    try:
+        for _category, value, _created in search_memories(query, limit=max(limit * 2, 8)):
+            if isinstance(value, str) and value.strip():
+                lexical.append(value.strip())
+    except Exception:
+        lexical = []
+
+    semantic = []
+    try:
+        from modules.vector_memory import semantic_search
+
+        for item in semantic_search(query, limit=max(limit * 2, 8)):
+            content = item.get("content") if isinstance(item, dict) else None
+            if isinstance(content, str) and content.strip():
+                semantic.append(content.strip())
+    except Exception:
+        semantic = []
+
+    if not lexical and not semantic:
+        return []
+
+    k = 60
+    scores = {}
+    first_seen = {}
+    for ranked in (semantic, lexical):
+        for rank, content in enumerate(ranked):
+            scores[content] = scores.get(content, 0.0) + 1.0 / (k + rank + 1)
+            if content not in first_seen:
+                first_seen[content] = len(first_seen)
+    ordered = sorted(scores.keys(), key=lambda c: (-scores[c], first_seen[c]))
+    return ordered[:limit]
+
+
 def save_structured_memory(category: str, key: str, value: dict):
     """Persist structured memory values in JSON form for profile/topic context."""
     remember(category, key, json.dumps(value, ensure_ascii=False))

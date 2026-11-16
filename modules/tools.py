@@ -1,5 +1,6 @@
 import os
 import datetime
+import fnmatch
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 import json
@@ -8,6 +9,53 @@ import subprocess
 import urllib.request
 import webbrowser
 from config.settings import ASSETS_DIR, CODE_DIR, SAFE_MODE
+from typing import Any, Dict, List, Optional
+
+from modules.audit import log_audit_event
+
+# Non-bypassable protected codebase patterns relative to PROJECT_ROOT
+PROTECTED_GLOBS: list[str] = [
+    "jarvis.py",
+    "modules/*.py",
+    "modules/**/*.py",
+    "tests/*.py",
+    "tests/**/*.py",
+]
+
+
+def _normalize_rel_path(filepath: str) -> Optional[str]:
+    """
+    Resolves symlinks and '..' traversal to determine path relative to PROJECT_ROOT.
+    Returns None if the resolved path lies outside PROJECT_ROOT.
+    """
+    abs_root = os.path.realpath(PROJECT_ROOT)
+    candidate = filepath if os.path.isabs(filepath) else os.path.join(abs_root, filepath)
+    real_target = os.path.realpath(candidate)
+
+    try:
+        rel = os.path.relpath(real_target, abs_root)
+    except ValueError:
+        return None
+
+    if rel.startswith("..") or os.path.isabs(rel):
+        return None
+
+    return rel.replace("\\", "/")
+
+
+def is_protected_path(filepath: str) -> bool:
+    """
+    Returns True if filepath resolves to any protected source or test file
+    inside PROJECT_ROOT. Immune to '..', './', and symlink indirection.
+    """
+    rel_path = _normalize_rel_path(filepath)
+    if rel_path is None:
+        return False
+
+    for pattern in PROTECTED_GLOBS:
+        if fnmatch.fnmatch(rel_path, pattern):
+            return True
+    return False
 
 try:
     from PIL import Image, ImageDraw, ImageFont
@@ -542,6 +590,105 @@ def write_local_file(filepath: str, content: str, confirmed: bool = True) -> str
     return f"Successfully wrote data to {safe_path}"
   except Exception as e:
     return f"Error writing file: {e}"
+
+
+def safe_write_file(
+    filepath: str,
+    content: str,
+    actor: str = "user",
+    reason: str = "file modification",
+    memory_ids: Optional[List[int]] = None,
+    preference_keys: Optional[List[str]] = None,
+    provider_info: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Unified file write gateway for all tools, plugins, and autonomous routines.
+    - Protected files (jarvis.py, modules/*.py, tests/*.py) MUST route through
+      learning.py's backup -> compile() -> test -> rollback pipeline.
+    - Non-protected workspace/data files write directly.
+    - Every operation is recorded in audit.jsonl.
+    """
+    abs_target = (
+        os.path.realpath(filepath)
+        if os.path.isabs(filepath)
+        else os.path.realpath(os.path.join(PROJECT_ROOT, filepath))
+    )
+    rel_display = _normalize_rel_path(abs_target) or abs_target
+
+    if is_protected_path(abs_target):
+        # Lazy import prevents circular dependency between tools.py and learning.py
+        from modules import learning
+
+        pipeline_result = learning.apply_safe_modification(
+            target_file=abs_target,
+            new_content=content,
+            reason=reason,
+        )
+        success = bool(pipeline_result.get("success", False))
+        outcome = "success" if success else "rolled_back"
+
+        event_id = log_audit_event(
+            actor=actor,
+            action="protected_file_route",
+            outcome=outcome,
+            paths_touched=[rel_display],
+            memory_ids=memory_ids,
+            preference_keys=preference_keys,
+            provider_info=provider_info,
+            metadata={
+                "reason": reason,
+                "backup_path": pipeline_result.get("backup_path"),
+                "error": pipeline_result.get("error"),
+            },
+        )
+        return {
+            "success": success,
+            "routed_through_pipeline": True,
+            "path": rel_display,
+            "audit_event_id": event_id,
+            "details": pipeline_result,
+        }
+
+    # Direct write for non-protected workspace files (logs, memory DB artifacts, data)
+    try:
+        os.makedirs(os.path.dirname(abs_target), exist_ok=True)
+        with open(abs_target, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        event_id = log_audit_event(
+            actor=actor,
+            action="file_write",
+            outcome="success",
+            paths_touched=[rel_display],
+            memory_ids=memory_ids,
+            preference_keys=preference_keys,
+            provider_info=provider_info,
+            metadata={"reason": reason, "bytes_written": len(content.encode("utf-8"))},
+        )
+        return {
+            "success": True,
+            "routed_through_pipeline": False,
+            "path": rel_display,
+            "audit_event_id": event_id,
+        }
+    except Exception as exc:
+        event_id = log_audit_event(
+            actor=actor,
+            action="file_write",
+            outcome="error",
+            paths_touched=[rel_display],
+            memory_ids=memory_ids,
+            preference_keys=preference_keys,
+            provider_info=provider_info,
+            metadata={"reason": reason, "error": str(exc)},
+        )
+        return {
+            "success": False,
+            "routed_through_pipeline": False,
+            "path": rel_display,
+            "audit_event_id": event_id,
+            "error": str(exc),
+        }
 
 
 def edit_file_section(filepath: str, old_text: str, new_text: str, confirmed: bool = True) -> str:

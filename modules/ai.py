@@ -31,6 +31,7 @@ except ImportError:  # pragma: no cover - optional dependency for cloud fallback
 
 from config.settings import MODEL_NAME
 from modules.logger import log_error
+from modules.audit import DecisionTrace, log_audit_event
 from modules.automation import (
     content_idea_bot,
     experiment_review_bot,
@@ -69,6 +70,7 @@ from modules.tools import (
     review_social_post_draft,
     rollback_file,
     run_project_tests,
+    safe_write_file,
     schedule_social_post,
     search_long_term_memory,
     search_project_files,

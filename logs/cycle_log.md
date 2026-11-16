@@ -22,3 +22,5 @@
 - 42/42 tests passing, no bugs, no unwired hooks, no meaningful test gaps
 
 [FIX-CYCLE 1] Target: modules/ai.py, tests/test_tool_synthesis.py | Change: Added _dispatch_tool() helper with get_dynamic_tool() fallback in ai.py; replaced both Groq and Ollama dispatch sites to use helper; added 3 tests verifying dynamic tool execution, unknown tool error, and dynamic tool error handling | Tests: PASS 45 (baseline 42) | Installs: none | Next: Cycle 2 - wire clear_stop() & resume path
+
+[FIX-CYCLE 2] Target: modules/goals.py, jarvis.py, modules/ui.py, modules/scheduler.py, tests/test_goals_and_worker.py | Change: Added request_stop()/clear_stop()/is_stopped() stop flag in goals.py; wired clear_stop() into jarvis.py startup; added RESUME button in HUD wired to clear_stop callback; added is_stopped() check in process_one_idle_goal; added 3 tests for stop/resume/checkpoint recovery | Tests: PASS 48 (baseline 45) | Installs: none | Next: Cycle 3 - enforce force_provider="ollama" on autonomous calls

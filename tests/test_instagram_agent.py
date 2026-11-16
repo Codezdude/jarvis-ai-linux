@@ -1,7 +1,9 @@
 import os
 import sys
+import json
 import tempfile
 import unittest
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -367,6 +369,50 @@ class TestPublishGraphApi(InstagramAgentTestBase):
         self.assertEqual(len(captured), 2)
         self.assertTrue(captured[0].endswith("/media"))
         self.assertTrue(captured[1].endswith("/media_publish"))
+
+
+class TestAccessibilityCaption(unittest.TestCase):
+    class _Resp:
+        def __init__(self, data):
+            self._data = data
+
+        def read(self):
+            return self._data
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def _fake_urlopen_factory(self, captured):
+        def _fake_urlopen(req, timeout=None):
+            if hasattr(req, "data") and req.data:
+                captured.append(urllib.parse.parse_qs(req.data.decode("utf-8")))
+                if req.full_url.endswith("/media"):
+                    return self._Resp(json.dumps({"id": "c1"}).encode())
+                return self._Resp(json.dumps({"id": "m1"}).encode())
+            return self._Resp(json.dumps({}).encode())
+        return _fake_urlopen
+
+    def test_accessibility_caption_sent_on_container(self):
+        captured = []
+        with patch.dict(os.environ, {"IG_USER_ID": "1", "IG_ACCESS_TOKEN": "tok"}), \
+             patch("modules.instagram_agent.urllib.request.urlopen", side_effect=self._fake_urlopen_factory(captured)):
+            media_id = ig.publish_to_instagram_graph(
+                "https://cdn/x.png", "cap", accessibility_caption="alt text here"
+            )
+
+        self.assertEqual(media_id, "m1")
+        self.assertEqual(captured[0]["accessibility_caption"], ["alt text here"])
+
+    def test_no_accessibility_caption_omits_field(self):
+        captured = []
+        with patch.dict(os.environ, {"IG_USER_ID": "1", "IG_ACCESS_TOKEN": "tok"}), \
+             patch("modules.instagram_agent.urllib.request.urlopen", side_effect=self._fake_urlopen_factory(captured)):
+            ig.publish_to_instagram_graph("https://cdn/x.png", "cap")
+
+        self.assertNotIn("accessibility_caption", captured[0])
 
 
 if __name__ == "__main__":

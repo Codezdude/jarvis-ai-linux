@@ -55,10 +55,15 @@ def _ensure_ig_schema(conn: sqlite3.Connection) -> None:
             ig_media_id TEXT DEFAULT '',
             error_message TEXT DEFAULT '',
             created_at TEXT NOT NULL,
-            published_at TEXT DEFAULT ''
+            published_at TEXT DEFAULT '',
+            accessibility_caption TEXT DEFAULT ''
         )
     """)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_ig_posts_status_time ON instagram_posts(status, scheduled_at_utc)")
+    # Migration for pre-existing DBs: add accessibility_caption if missing
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(instagram_posts)")}
+    if "accessibility_caption" not in cols:
+        conn.execute("ALTER TABLE instagram_posts ADD COLUMN accessibility_caption TEXT DEFAULT ''")
     conn.commit()
 
 
@@ -233,8 +238,15 @@ def publish_to_instagram_graph(
     caption: str,
     ig_user_id: Optional[str] = None,
     access_token: Optional[str] = None,
+    accessibility_caption: Optional[str] = None,
 ) -> str:
-    """Execute Meta's 2-step Instagram Graph API container creation and publish flow."""
+    """Execute Meta's 2-step Instagram Graph API container creation and publish flow.
+
+    Args:
+        accessibility_caption: Optional alt text describing the image for
+            screen-reader users. When provided it is sent as the container's
+            ``accessibility_caption`` field.
+    """
     uid = (ig_user_id or _env("IG_USER_ID", "")).strip()
     token = (access_token or _env("IG_ACCESS_TOKEN", "")).strip()
     if not uid or not token:
@@ -243,11 +255,14 @@ def publish_to_instagram_graph(
     base = f"https://graph.facebook.com/{GRAPH_API_VERSION}/{urllib.parse.quote(uid)}"
 
     # Step 1: Create media container
-    create_body = urllib.parse.urlencode({
+    create_fields = {
         "image_url": image_url,
         "caption": caption,
         "access_token": token,
-    }).encode("utf-8")
+    }
+    if accessibility_caption:
+        create_fields["accessibility_caption"] = accessibility_caption
+    create_body = urllib.parse.urlencode(create_fields).encode("utf-8")
     create_req = urllib.request.Request(f"{base}/media", data=create_body)
     with urllib.request.urlopen(create_req, timeout=30) as resp:
         create_res = json.loads(resp.read().decode("utf-8"))
@@ -336,6 +351,7 @@ def create_and_schedule_post(
     image_prompt: Optional[str] = None,
     image_path: Optional[str] = None,
     public_image_url: str = "",
+    accessibility_caption: Optional[str] = None,
     auto_approve: bool = False,
     approval_fn: Optional[Callable[[str, str], bool]] = None,
     db_path: Path = DEFAULT_IG_DB_PATH,
@@ -371,8 +387,8 @@ def create_and_schedule_post(
         cur = conn.execute(
             """
             INSERT INTO instagram_posts
-            (topic, caption, image_path, public_image_url, scheduled_at_utc, status, approved, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (topic, caption, image_path, public_image_url, scheduled_at_utc, status, approved, created_at, accessibility_caption)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 topic,
@@ -383,6 +399,7 @@ def create_and_schedule_post(
                 status,
                 1 if approved else 0,
                 datetime.now(timezone.utc).isoformat(),
+                (accessibility_caption or "").strip(),
             ),
         )
         conn.commit()
@@ -446,7 +463,11 @@ def process_due_instagram_posts(
             post_id = row["id"]
             try:
                 img_url = url_resolver_fn(Path(row["image_path"]), row["public_image_url"] or "")
-                media_id = publish_fn(img_url, row["caption"])
+                media_id = publish_fn(
+                    img_url,
+                    row["caption"],
+                    accessibility_caption=(row["accessibility_caption"] or "") or None,
+                )
                 conn.execute(
                     """
                     UPDATE instagram_posts

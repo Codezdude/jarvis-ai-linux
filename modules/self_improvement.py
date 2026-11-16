@@ -117,28 +117,57 @@ def validate_code_syntax(code_string: str = "", filepath: str = "") -> tuple[boo
 
 
 def run_project_tests(test_target: str = "tests", timeout: int = 60) -> tuple[bool, str]:
-    """Execute the project unittest suite to ensure system stability."""
+    """Execute the project unittest suite to ensure system stability.
+
+    Runs each ``test_*.py`` file in its own subprocess with a bounded timeout.
+    This is deliberately *not* ``unittest discover``: discovery mode shares a
+    single interpreter, so one test that hangs on a model call or a thread
+    deadlock blocks every later file and the whole suite never returns.  Running
+    files individually means a hang in ``test_ui.py`` cannot stall ``test_goals.py``,
+    and the gate always produces a real pass/fail instead of a timeout.
+
+    A file that times out is reported as a failure, never skipped, so the gate
+    stays honest about what is broken.
+    """
     try:
-        cmd = [sys.executable, "-m", "unittest"]
         if test_target.endswith(".py"):
-            cmd.append(test_target)
+            files = [test_target]
         else:
-            cmd.extend(["discover", test_target])
+            target_dir = test_target if os.path.isabs(test_target) else os.path.join(PROJECT_ROOT, test_target)
+            files = sorted(
+                os.path.join(target_dir, f)
+                for f in os.listdir(target_dir)
+                if f.startswith("test_") and f.endswith(".py")
+            )
 
-        result = subprocess.run(
-            cmd,
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
+        if not files:
+            return False, f"No test files found under {test_target}."
 
-        output = (result.stdout or "") + ("\n" + result.stderr if result.stderr else "")
-        output_cleaned = output.strip()
-        passed = result.returncode == 0
-        return passed, output_cleaned
-    except subprocess.TimeoutExpired:
-        return False, f"Test execution timed out after {timeout} seconds."
+        per_file_timeout = max(5, min(timeout, 25))
+        outputs = []
+        all_passed = True
+
+        for filepath in files:
+            rel = os.path.relpath(filepath, PROJECT_ROOT)
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-m", "unittest", filepath],
+                    cwd=PROJECT_ROOT,
+                    capture_output=True,
+                    text=True,
+                    timeout=per_file_timeout,
+                    env={**os.environ, "JARVIS_OLLAMA_TIMEOUT_SEC": "10"},
+                )
+                chunk = (result.stdout or "") + ("\n" + result.stderr if result.stderr else "")
+                chunk = chunk.strip()
+                if result.returncode != 0:
+                    all_passed = False
+                outputs.append(f"=== {rel} (exit {result.returncode}) ===\n{chunk[-1200:]}")
+            except subprocess.TimeoutExpired:
+                all_passed = False
+                outputs.append(f"=== {rel} ===\nTIMED OUT after {per_file_timeout}s (treated as failure)")
+
+        return all_passed, "\n\n".join(outputs)
     except Exception as e:
         return False, f"Failed to run test suite: {e}"
 

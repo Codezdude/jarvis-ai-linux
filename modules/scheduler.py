@@ -90,7 +90,7 @@ def process_one_idle_goal(
     place and return {"step_done": bool, "goal_complete": bool, "step_output": str}.
     """
     from modules.goals import get_goal, update_goal, enqueue_goal
-    from modules.reflections import evaluate_task_rubric
+    from modules.reflections import evaluate_task_rubric, mine_failure_corpus
 
     import os as _os
     import json as _json
@@ -226,6 +226,15 @@ def process_one_idle_goal(
         checkpoint=checkpoint,
         db_path=db_path,
     )
+
+    # Mine the failure corpus for recurring patterns after every idle cycle
+    try:
+        mined = mine_failure_corpus(db_path=db_path)
+        if mined:
+            log_info(f"Mined {len(mined)} recurring failure mode(s) into self-improvement goals.")
+    except Exception as e:
+        log_error(f"Failure corpus mining failed: {e}")
+
     return {
         "ran": True,
         "status": "pending",

@@ -245,7 +245,8 @@ def publish_to_instagram_graph(
     Args:
         accessibility_caption: Optional alt text describing the image for
             screen-reader users. When provided it is sent as the container's
-            ``accessibility_caption`` field.
+            ``alt_text`` field (Meta's documented field name for image alt
+            text on the ``/<ig-user-id>/media`` endpoint).
     """
     uid = (ig_user_id or _env("IG_USER_ID", "")).strip()
     token = (access_token or _env("IG_ACCESS_TOKEN", "")).strip()
@@ -261,7 +262,7 @@ def publish_to_instagram_graph(
         "access_token": token,
     }
     if accessibility_caption:
-        create_fields["accessibility_caption"] = accessibility_caption
+        create_fields["alt_text"] = accessibility_caption
     create_body = urllib.parse.urlencode(create_fields).encode("utf-8")
     create_req = urllib.request.Request(f"{base}/media", data=create_body)
     with urllib.request.urlopen(create_req, timeout=30) as resp:

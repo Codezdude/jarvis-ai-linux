@@ -404,7 +404,7 @@ class TestAccessibilityCaption(unittest.TestCase):
             )
 
         self.assertEqual(media_id, "m1")
-        self.assertEqual(captured[0]["accessibility_caption"], ["alt text here"])
+        self.assertEqual(captured[0]["alt_text"], ["alt text here"])
 
     def test_no_accessibility_caption_omits_field(self):
         captured = []
@@ -412,7 +412,7 @@ class TestAccessibilityCaption(unittest.TestCase):
              patch("modules.instagram_agent.urllib.request.urlopen", side_effect=self._fake_urlopen_factory(captured)):
             ig.publish_to_instagram_graph("https://cdn/x.png", "cap")
 
-        self.assertNotIn("accessibility_caption", captured[0])
+        self.assertNotIn("alt_text", captured[0])
 
     def test_scheduled_post_passes_accessibility_caption(self):
         import tempfile

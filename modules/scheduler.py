@@ -52,7 +52,7 @@ class JarvisScheduler:
         f" markdown symbols or emojis, and address the user as Sir."
     )
 
-    briefing_text = ask_local_brain(prompt)
+    briefing_text = ask_local_brain(prompt, force_provider="ollama")
     from modules.voice import speak
     speak(briefing_text, self.hud_callback)
 

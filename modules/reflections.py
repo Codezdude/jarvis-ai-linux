@@ -145,7 +145,7 @@ def _ollama_rubric_scorer(
     )
 
     try:
-        raw = ask_local_brain(prompt)
+        raw = ask_local_brain(prompt, force_provider="ollama")
         est_tokens = max(1, (len(prompt) + len(str(raw))) // 4)
         record_budget_usage(
             "tokens",

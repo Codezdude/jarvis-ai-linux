@@ -1,58 +1,66 @@
 [
   {
     "role": "user",
-    "content": "hi"
+    "content": "hello world"
   },
   {
     "role": "assistant",
-    "content": "Hello, Sir. JARVIS is online and ready to assist you."
+    "content": "Local response from Ollama."
   },
   {
     "role": "user",
-    "content": "do you have access to your directory"
-  },
-  {
-    "role": "user",
-    "content": "hi"
+    "content": "hello world"
   },
   {
     "role": "assistant",
-    "content": "Yes, Sir. I have full read and write access across the project directory, including source modules, assets, logs, memory stores, and test suites. How would you like me to assist you with the workspace?"
+    "content": "Fallback from Ollama."
   },
   {
     "role": "user",
-    "content": "can you check yourself and note areas on improvemnt"
-  },
-  {
-    "role": "user",
-    "content": "hi"
-  },
-  {
-    "role": "user",
-    "content": "hi"
-  },
-  {
-    "role": "user",
-    "content": "hi"
-  },
-  {
-    "role": "user",
-    "content": "hi"
+    "content": "hello world"
   },
   {
     "role": "assistant",
-    "content": "Hello, Sir. Let me inspect my current state and recent logs to assess areas for improvement.\nLet me start by examining my operational context.\n<function_calls>\n<invoke name=\"inspect_recent_logs\">\n<parameter name=\"limit\">50</parameter>\n</invoke>\n<invoke name=\"search_project_files\">\n<parameter name=\"query\">jarvis module self-improvement\n</parameter>\n<parameter name=\"path\">.\n</parameter>\n</invoke>\n</function_calls>"
+    "content": "Local response from Ollama."
   },
   {
     "role": "user",
-    "content": "so how i can improve you"
+    "content": "hello world"
   },
   {
     "role": "assistant",
-    "content": "Sir, I can help you improve me in several ways. Let me first inspect my current codebase and logs to give you specific, grounded recommendations.\n<function_calls>\n<invoke name=\"inspect_recent_logs\">\n<parameter name=\"limit\">50</parameter>\n</invoke>\n<invoke name=\"search_project_files\">\n<parameter name=\"query>\njarvis\n</parameter>\n<parameter name=\"path\">.\n</parameter>\n</invoke>\n</function_calls>"
+    "content": "Fallback from Ollama."
   },
   {
     "role": "user",
-    "content": "so.."
+    "content": "hello world"
+  },
+  {
+    "role": "assistant",
+    "content": "Local response from Ollama."
+  },
+  {
+    "role": "user",
+    "content": "hello world"
+  },
+  {
+    "role": "assistant",
+    "content": "Fallback from Ollama."
+  },
+  {
+    "role": "user",
+    "content": "hello world"
+  },
+  {
+    "role": "assistant",
+    "content": "Local response from Ollama."
+  },
+  {
+    "role": "user",
+    "content": "hello world"
+  },
+  {
+    "role": "assistant",
+    "content": "Fallback from Ollama."
   }
 ]

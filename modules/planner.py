@@ -89,7 +89,7 @@ def decompose_goal(
             f"Goal: {goal_description}\n"
             f"Context: {json.dumps(ctx, ensure_ascii=False)}"
         )
-        raw = ask_local_brain(prompt)
+        raw = ask_local_brain(prompt, force_provider="ollama")
         record_budget_usage(
             "tokens",
             actor="autonomous_planner",
@@ -148,7 +148,7 @@ def execute_plan_step(
         f"Expected Outcome: {step['expected_outcome']}\n"
         "Execute this step concisely and provide concrete output."
     )
-    raw = ask_local_brain(prompt)
+    raw = ask_local_brain(prompt, force_provider="ollama")
     record_budget_usage(
         "tokens",
         actor="autonomous_planner",
@@ -195,7 +195,7 @@ def verify_step_output(
         f"Expected Outcome: {step['expected_outcome']}\n"
         f"Actual Output:\n{text[:1200]}"
     )
-    raw = ask_local_brain(prompt)
+    raw = ask_local_brain(prompt, force_provider="ollama")
     record_budget_usage(
         "tokens",
         actor="autonomous_planner",
@@ -240,7 +240,7 @@ def replan_from_failure(
             f"Failed Step: {failed_step['description']}\n"
             f"Failure Reason: {failure_reason}"
         )
-        raw = ask_local_brain(prompt)
+        raw = ask_local_brain(prompt, force_provider="ollama")
         record_budget_usage(
             "tokens",
             actor="autonomous_planner",

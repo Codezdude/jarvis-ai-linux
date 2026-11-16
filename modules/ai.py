@@ -6,6 +6,7 @@ import subprocess
 import threading
 import time
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 try:
     from openai import OpenAI, APITimeoutError, APIConnectionError

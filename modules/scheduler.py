@@ -125,6 +125,13 @@ def process_one_idle_goal(
         ).fetchone()
 
     if not row:
+        # Mine the failure corpus for recurring patterns during idle cycles
+        try:
+            mined = mine_failure_corpus(db_path=db_path)
+            if mined:
+                log_info(f"Mined {len(mined)} recurring failure mode(s) into self-improvement goals.")
+        except Exception as e:
+            log_error(f"Failure corpus mining failed: {e}")
         return {"ran": False, "status": "no_idle_goal", "steps_executed": 0}
 
     goal = dict(row)
@@ -162,6 +169,13 @@ def process_one_idle_goal(
                     execution_error=None,
                     db_path=db_path,
                 )
+                # Mine the failure corpus after goal completion
+                try:
+                    mined = mine_failure_corpus(db_path=db_path)
+                    if mined:
+                        log_info(f"Mined {len(mined)} recurring failure mode(s) into self-improvement goals.")
+                except Exception as e:
+                    log_error(f"Failure corpus mining failed: {e}")
                 return {
                     "ran": True,
                     "status": "completed",
@@ -183,6 +197,13 @@ def process_one_idle_goal(
                 db_path=db_path,
             )
             record_budget_usage("failure", actor="autonomous_planner", goal_id=goal_id, amount=1, db_path=db_path)
+            # Mine the failure corpus after budget pause
+            try:
+                mined = mine_failure_corpus(db_path=db_path)
+                if mined:
+                    log_info(f"Mined {len(mined)} recurring failure mode(s) into self-improvement goals.")
+            except Exception as e:
+                log_error(f"Failure corpus mining failed: {e}")
             return {
                 "ran": True,
                 "status": "paused_budget",
@@ -212,6 +233,13 @@ def process_one_idle_goal(
             execution_error=err_msg,
             db_path=db_path,
         )
+        # Mine the failure corpus after goal failure
+        try:
+            mined = mine_failure_corpus(db_path=db_path)
+            if mined:
+                log_info(f"Mined {len(mined)} recurring failure mode(s) into self-improvement goals.")
+        except Exception as e:
+            log_error(f"Failure corpus mining failed: {e}")
         return {
             "ran": True,
             "status": "failed",

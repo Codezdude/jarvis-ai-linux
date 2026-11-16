@@ -214,7 +214,7 @@ if __name__ == "__main__":
 
     root = ctk.CTk()
     root.title("J.A.R.V.I.S. Quantum HUD")
-    hud_instance = JarvisHUD(root, command_callback=process_command, stop_callback=request_stop)
+    hud_instance = JarvisHUD(root, command_callback=process_command, stop_callback=request_stop, resume_callback=clear_stop)
 
     try:
         scheduler = JarvisScheduler(

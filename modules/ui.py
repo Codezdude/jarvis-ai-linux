@@ -139,6 +139,13 @@ class JarvisHUD:
         )
         stop_btn.pack(side="right", padx=(0, 6))
 
+        resume_btn = ctk.CTkButton(
+            actions, text="\u25b6", width=30, height=28, fg_color="transparent",
+            text_color="#9ef0c4", hover_color="#173b2f", font=("DejaVu Sans", 12, "bold"),
+            command=self._on_resume_click
+        )
+        resume_btn.pack(side="right", padx=(0, 6))
+
         hide_btn = ctk.CTkButton(
             actions, text="\u2014", width=30, height=28, fg_color="transparent",
             text_color="#dbeeff", hover_color="#1a2d3d", font=("DejaVu Sans", 11, "bold"),
@@ -431,6 +438,12 @@ class JarvisHUD:
         if self.stop_callback is not None:
             self.stop_callback()
         self.update_ui("STOPPED", "idle", "All autonomous subsystems halted.")
+
+    def _on_resume_click(self):
+        """Handler for the HUD RESUME button."""
+        if self.resume_callback is not None:
+            self.resume_callback()
+        self.update_ui("RESUMED", "idle", "Autonomous subsystems resumed.")
 
     def load_history_data(self):
         records = get_recent_history(limit=15)

@@ -110,8 +110,12 @@ def process_one_idle_goal(
         return conn
 
     # Ensure schema exists
-    from modules.goals import init_goals_db
+    from modules.goals import init_goals_db, is_stopped
     init_goals_db(db_path)
+
+    # Skip processing if the stop flag is set
+    if is_stopped():
+        return {"ran": False, "status": "stopped", "steps_executed": 0}
 
     # Pick the highest-priority pending goal
     with _get_connection(db_path) as conn:

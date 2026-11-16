@@ -6,6 +6,7 @@ import importlib
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 import json
 import re
+import sqlite3
 import subprocess
 import urllib.request
 import webbrowser
@@ -13,7 +14,7 @@ from config.settings import ASSETS_DIR, CODE_DIR, SAFE_MODE
 from typing import Any, Callable, Dict, List, Optional
 
 from modules.audit import log_audit_event
-from modules.approval import check_approval
+from modules.approval import check_approval, DEFAULT_DB_PATH
 
 # Non-bypassable protected codebase patterns relative to PROJECT_ROOT
 PROTECTED_GLOBS: list[str] = [
@@ -604,6 +605,7 @@ def safe_write_file(
     memory_ids: Optional[List[int]] = None,
     preference_keys: Optional[List[str]] = None,
     provider_info: Optional[Dict[str, Any]] = None,
+    db_path: str = DEFAULT_DB_PATH,
 ) -> Dict[str, Any]:
     """
     Unified file write gateway for all tools, plugins, and autonomous routines.
@@ -629,6 +631,7 @@ def safe_write_file(
         reason=reason,
         is_protected_file=protected,
         signed_token=signed_token,
+        db_path=db_path,
     )
     if not gate["approved"]:
         return {

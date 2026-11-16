@@ -128,13 +128,18 @@ def _render_pillow_card(headline: str, subtitle: str, out_path: Path, handle: st
 POLLINATIONS_BASE_URL = "https://image.pollinations.ai/prompt"
 
 
+def _pollinations_model() -> str:
+    """Pollinations model name (free tier default: flux-realism)."""
+    return _env("IG_IMAGE_MODEL", "flux-realism").strip() or "flux-realism"
+
+
 def _try_pollinations_image(prompt: str, width: int = 1080, height: int = 1080, timeout: int = 60) -> bytes:
     """Free, no-key AI image via Pollinations.ai REST endpoint. Returns PNG bytes or raises."""
     query = urllib.parse.urlencode({
         "width": width,
         "height": height,
         "nologo": "true",
-        "model": "flux-realism",
+        "model": _pollinations_model(),
     })
     url = f"{POLLINATIONS_BASE_URL}/{urllib.parse.quote(prompt)}?{query}"
     req = urllib.request.Request(url, headers={"User-Agent": "JARVIS/1.0"})

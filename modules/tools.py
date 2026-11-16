@@ -810,11 +810,12 @@ def _try_pollinations_image(prompt: str, width: int = 1080, height: int = 1080, 
     import urllib.parse
     import urllib.request
 
+    model = os.getenv("IG_IMAGE_MODEL", "flux-realism").strip() or "flux-realism"
     query = urllib.parse.urlencode({
         "width": width,
         "height": height,
         "nologo": "true",
-        "model": "flux-realism",
+        "model": model,
     })
     url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(prompt)}?{query}"
     req = urllib.request.Request(url, headers={"User-Agent": "JARVIS/1.0"})

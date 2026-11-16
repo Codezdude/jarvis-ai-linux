@@ -1,0 +1,9 @@
+{
+  "updated_at": "2026-11-16T21:11:35.391643+00:00",
+  "n_posts": 5,
+  "sample_sufficient": false,
+  "top_posts": [],
+  "bottom_posts": [],
+  "pattern": "Learning: insufficient data (n=5 < 10); using default heuristics.",
+  "notes": "Insights unavailable (Graph API error 2500); save_rate/share_rate not computable."
+}

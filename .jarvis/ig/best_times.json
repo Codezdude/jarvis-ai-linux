@@ -1,0 +1,10 @@
+{
+  "source": "defaults",
+  "timezone": "Africa/Lagos",
+  "windows": [
+    "Tue-Thu 11:00-13:00",
+    "Tue-Thu 18:00-20:00"
+  ],
+  "note": "no live insights \u2014 human review recommended",
+  "derived_from": "defaults (no IG insights; n=5<20 for history)"
+}

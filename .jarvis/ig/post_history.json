@@ -91,5 +91,29 @@
     "shares": null,
     "permalink": "https://www.instagram.com/reel/DNc8iRYC_Hn/",
     "insights_error": "{\"error\":{\"message\":\"Unknown path components: \\/18039423290669253\\/insights\",\"type\":\"OAuthException\",\"code\":2500,\"fbtrac"
+  },
+  {
+    "id": null,
+    "date": "2026-11-16",
+    "topic": "Inflammation",
+    "angle": "DEFINITION",
+    "headline": "What inflammation actually means",
+    "caption": "'Inflammation' gets a bad rap. Here's what it actually means.",
+    "hashtags": [
+      "health",
+      "wellness",
+      "inflammation",
+      "immunesystem",
+      "HealthLexicon"
+    ],
+    "saves": null,
+    "shares": null,
+    "comments": null,
+    "reach": null,
+    "scheduled_for": "2026-11-17T11:00:00+01:00",
+    "published_at": null,
+    "status": "pending_review",
+    "schedule_id": "ig-2026-11-16-inflammation",
+    "image_path": "data/ig_media/ig_inflammation_definition.png"
   }
 ]

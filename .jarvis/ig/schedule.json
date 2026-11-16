@@ -1,0 +1,16 @@
+[
+  {
+    "scheduled_for": "2026-11-17T11:00:00+01:00",
+    "topic": "Inflammation",
+    "angle": "DEFINITION",
+    "caption_preview": "'Inflammation' gets a bad rap. Here's what it actually means.",
+    "status": "pending_review",
+    "schedule_id": "ig-2026-11-16-inflammation",
+    "timezone": "Africa/Lagos",
+    "source": "defaults",
+    "draft_path": ".jarvis/ig/drafts/inflammation_definition.md",
+    "created_at": "2026-11-16T21:11:35.391643+00:00",
+    "image_path": "data/ig_media/ig_inflammation_definition.png",
+    "render_status": "rendered"
+  }
+]

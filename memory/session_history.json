@@ -1,29 +1,5 @@
 [
   {
-    "role": "user",
-    "content": "hello world"
-  },
-  {
-    "role": "assistant",
-    "content": "Local response from Ollama."
-  },
-  {
-    "role": "user",
-    "content": "hello world"
-  },
-  {
-    "role": "assistant",
-    "content": "Fallback from Ollama."
-  },
-  {
-    "role": "user",
-    "content": "what time is it"
-  },
-  {
-    "role": "tool",
-    "content": "time_value"
-  },
-  {
     "role": "assistant",
     "content": "Done."
   },
@@ -47,6 +23,31 @@
   {
     "role": "assistant",
     "content": "Done listing."
+  },
+  {
+    "role": "user",
+    "content": "hello"
+  },
+  {
+    "role": "assistant",
+    "content": "Just a normal response."
+  },
+  {
+    "role": "user",
+    "content": "list the current directory"
+  },
+  {
+    "role": "assistant",
+    "content": "Let me check. <dots_function_call><list_directory></list></dots_function_call>"
+  },
+  {
+    "role": "tool",
+    "content": "file1.txt\nfile2.py",
+    "name": "list_directory"
+  },
+  {
+    "role": "assistant",
+    "content": "The directory has been listed."
   },
   {
     "role": "user",

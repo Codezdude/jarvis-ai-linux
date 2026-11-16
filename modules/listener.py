@@ -76,6 +76,15 @@ class ContinuousVoiceListener:
                 continue
 
             try:
+                from modules.voice import is_mic_muted
+
+                if is_mic_muted():
+                    time.sleep(0.15)
+                    continue
+            except Exception:
+                pass
+
+            try:
                 with sr.Microphone() as source:
                     audio = self.recognizer.listen(source, timeout=2.0, phrase_time_limit=10.0)
 

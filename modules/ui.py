@@ -289,6 +289,14 @@ class JarvisHUD:
         )
         edit_btn.grid(row=0, column=4, padx=(6, 0))
 
+        self.mic_mute_btn = ctk.CTkButton(
+            input_frame, text="\U0001f507", width=44, height=38,
+            fg_color="#122738", text_color="#9ef0c4", hover_color="#173b2f",
+            font=("DejaVu Sans", 12, "bold"), corner_radius=10,
+            command=self._toggle_mic_mute
+        )
+        self.mic_mute_btn.grid(row=0, column=5, padx=(6, 0))
+
         self.root.bind("<Control-Shift-C>", lambda e: self._copy_last_code_block())
 
         # --- SETTINGS PANEL ---
@@ -527,7 +535,8 @@ class JarvisHUD:
                 self._settings_modal.focus()
                 return
             except Exception:
-                self._settings_modal = None
+        self._settings_modal = None
+        self._partial_preview_active = False
 
         try:
             settings = get_runtime_settings()
@@ -675,6 +684,55 @@ class JarvisHUD:
             font=("DejaVu Sans", 9, "bold"), corner_radius=8,
             command=self._on_clear_history_click,
         ).pack(side="left")
+
+        # Cloud token usage readout + compaction action.
+        usage_row = ctk.CTkFrame(system, fg_color="transparent")
+        usage_row.pack(fill="x", padx=12, pady=(2, 4))
+        try:
+            from modules.budget import get_daily_cloud_tokens
+
+            used_today = get_daily_cloud_tokens()
+        except Exception:
+            used_today = 0
+        ctk.CTkLabel(
+            usage_row, text=f"Cloud tokens today: {used_today:,}", text_color="#9ed5ff",
+            font=("DejaVu Sans", 9),
+        ).pack(side="left")
+        ctk.CTkButton(
+            usage_row, text="Compact Current Chat", height=26, fg_color="#173b2f",
+            text_color="#9ef0c4", hover_color="#1f5340",
+            font=("DejaVu Sans", 9, "bold"), corner_radius=8,
+            command=self._compact_current_chat,
+        ).pack(side="right")
+
+        # ── 5. MCP SERVERS ──────────────────────────────────────────
+        try:
+            from modules.mcp_bridge import list_mcp_server_configs
+
+            mcp_servers = list_mcp_server_configs()
+        except Exception:
+            mcp_servers = {}
+        if mcp_servers:
+            mcp = _section("5 \u2022 MCP SERVERS", accent="#c792ea")
+            for server_name, enabled in mcp_servers.items():
+                row = ctk.CTkFrame(mcp, fg_color="transparent")
+                row.pack(fill="x", padx=12, pady=2)
+                ctk.CTkLabel(row, text=server_name, text_color="#dbeeff",
+                             font=("DejaVu Sans", 9)).pack(side="left")
+                switch = ctk.CTkSwitch(row, text="", progress_color="#7ae6c9")
+                if enabled:
+                    switch.select()
+                else:
+                    switch.deselect()
+                switch.pack(side="right")
+                self._mcp_switches = getattr(self, "_mcp_switches", {})
+                self._mcp_switches[server_name] = switch
+            ctk.CTkButton(
+                mcp, text="Save MCP Settings", height=26, fg_color="#173b2f",
+                text_color="#9ef0c4", hover_color="#1f5340",
+                font=("DejaVu Sans", 9, "bold"), corner_radius=8,
+                command=self._save_mcp_settings,
+            ).pack(fill="x", padx=12, pady=(4, 8))
 
         # ── footer ──────────────────────────────────────────────────
         footer = ctk.CTkFrame(modal, fg_color="transparent")
@@ -872,6 +930,47 @@ class JarvisHUD:
                 self._begin_edit_message(item["id"], item["content"])
                 return
         self.update_ui("NO MESSAGE", "idle", "No user message to edit yet.")
+
+    def _toggle_mic_mute(self):
+        """Toggle microphone capture mute and reflect it on the button."""
+        try:
+            from modules.voice import set_mic_muted, is_mic_muted
+
+            new_state = not is_mic_muted()
+            set_mic_muted(new_state)
+            try:
+                update_runtime_settings({"mic_muted": new_state})
+            except Exception:
+                pass
+            if new_state:
+                self.mic_mute_btn.configure(text="\U0001f507", text_color="#ff9d9d")
+            else:
+                self.mic_mute_btn.configure(text="\U0001f3a4", text_color="#9ef0c4")
+            self.update_ui(
+                "MIC MUTED" if new_state else "MIC LIVE",
+                "idle",
+                "Microphone muted." if new_state else "Microphone live.",
+            )
+        except Exception as e:
+            log_error(f"Failed to toggle mic mute: {e}")
+
+    def on_partial_transcript(self, text: str, is_final: bool = False):
+        """Live speech preview: show the transcript in the input without auto-submitting."""
+        try:
+            self.root.after(0, lambda: self._apply_partial_transcript(text, is_final))
+        except Exception:
+            self._apply_partial_transcript(text, is_final)
+
+    def _apply_partial_transcript(self, text: str, is_final: bool):
+        if is_final:
+            self.cmd_entry.delete(0, "end")
+            self.cmd_entry.insert(0, text)
+        else:
+            # Only replace if the user has not started typing over the preview.
+            if not self.cmd_entry.get().strip() or self._partial_preview_active:
+                self.cmd_entry.delete(0, "end")
+                self.cmd_entry.insert(0, text)
+                self._partial_preview_active = True
 
     def _new_chat(self):
         """Start a fresh timestamped session and reset the view."""

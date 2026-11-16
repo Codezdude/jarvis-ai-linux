@@ -20,6 +20,25 @@ _pyttsx3_engine = None
 
 _VOICE_STATE_CALLBACKS = []
 
+_MIC_MUTED = False
+
+
+def set_mic_muted(muted: bool) -> bool:
+    """Globally mute/unmute the microphone capture (transcription is skipped while muted)."""
+    global _MIC_MUTED
+    _MIC_MUTED = bool(muted)
+    set_runtime_state("mic_muted", _MIC_MUTED)
+    return _MIC_MUTED
+
+
+def is_mic_muted() -> bool:
+    """Return whether microphone capture is currently muted."""
+    global _MIC_MUTED
+    runtime_value = get_runtime_state("mic_muted")
+    if runtime_value is not None:
+        _MIC_MUTED = str(runtime_value).strip().lower() in {"1", "true", "yes", "on"}
+    return _MIC_MUTED
+
 
 def register_voice_state_callback(cb) -> None:
     """Register a listener callback invoked with (enabled: bool) whenever voice toggles."""

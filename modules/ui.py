@@ -771,6 +771,21 @@ class JarvisHUD:
                     self._append_chat_bubble("user", reply_text[2:])
                 else:
                     self._append_chat_bubble("assistant", reply_text)
+                    # Persist assistant reply to the active session + compact if needed
+                    sess = self._current_session_id
+                    try:
+                        save_chat_message("assistant", reply_text, session_id=sess)
+                    except Exception:
+                        pass
+                    try:
+                        from modules.memory_consolidation import compact_session_if_needed
+
+                        threading.Thread(
+                            target=lambda s=sess: compact_session_if_needed(session_id=s),
+                            daemon=True,
+                        ).start()
+                    except Exception:
+                        pass
         if self.visible and not self.ui_queue.empty():
             self._queue_job = self.root.after(80, self.process_ui_queue)
 
@@ -798,16 +813,18 @@ class JarvisHUD:
                 pass
         self.cmd_entry.delete(0, "end")
 
+        # Persist the user message to the active session
+        try:
+            save_chat_message("user", query, session_id=self._current_session_id)
+        except Exception:
+            pass
+
         self.update_ui("PROCESSING", "thinking", f"> {query}")
 
         if self.command_callback:
             threading.Thread(
                 target=self.command_callback, args=(query, self.update_ui), daemon=True
             ).start()
-
-        threading.Thread(
-            target=lambda: save_interaction(query, "Processing..."), daemon=True
-        ).start()
 
     def on_mic_click(self):
         def background_listen():

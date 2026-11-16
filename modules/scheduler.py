@@ -5,7 +5,7 @@ import time
 from typing import Any, Callable, Dict
 
 from modules.ai import ask_local_brain
-from modules.budget import record_budget_usage
+from modules.budget import check_budget, record_budget_usage
 from modules.logger import log_error, log_info
 from modules.tools import get_current_time, get_system_diagnostics
 
@@ -268,6 +268,38 @@ def process_one_idle_goal(
         "status": "pending",
         "steps_executed": steps_executed,
     }
+
+
+def run_reactive_tick(db_path: str = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "jarvis_memory.db")) -> dict[str, Any]:
+    """Runs a reactive tick: mines the failure corpus for recurring patterns and checks budget status.
+
+    Intended to be called periodically from the scheduler loop or jarvis.py main loop.
+    """
+    from modules.reflections import mine_failure_corpus
+
+    results: dict[str, Any] = {
+        "mined_goals": [],
+        "budget_ok": True,
+    }
+
+    try:
+        mined = mine_failure_corpus(db_path=db_path)
+        results["mined_goals"] = mined
+        if mined:
+            log_info(f"Reactive tick: mined {len(mined)} recurring failure mode(s).")
+    except Exception as e:
+        log_error(f"Reactive tick failure corpus mining failed: {e}")
+
+    try:
+        budget = check_budget(actor="system", db_path=db_path)
+        results["budget_ok"] = budget.get("allowed", True)
+        if not results["budget_ok"]:
+            log_error(f"Reactive tick: budget tripped — {budget.get('reason', 'unknown')}")
+    except Exception as e:
+        log_error(f"Reactive tick budget check failed: {e}")
+        results["budget_ok"] = False
+
+    return results
 
 
 if __name__ == "__main__":

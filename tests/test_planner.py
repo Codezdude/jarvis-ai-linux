@@ -10,7 +10,7 @@ from modules.budget import init_budget_db, record_budget_usage
 from modules.goals import enqueue_goal, get_goal, init_goals_db
 from modules.planner import planned_step_executor
 from modules.preferences import set_preference
-from modules.scheduler import process_one_idle_goal
+from modules.scheduler import process_one_idle_goal, run_reactive_tick
 
 
 class TestPlanExecuteVerifyReplan(unittest.TestCase):
@@ -157,6 +157,31 @@ class TestPlanExecuteVerifyReplan(unittest.TestCase):
         bound_executor = partial(planned_step_executor, planner_fn=fake_planner, db_path=self.db_path)
         res = process_one_idle_goal(step_executor=bound_executor, db_path=self.db_path)
         self.assertEqual(res["status"], "paused_budget")
+
+    def test_run_reactive_tick_mines_and_checks_budget(self):
+        from modules.reflections import evaluate_task_rubric, init_reflections_db
+        from modules.approval import init_approval_db
+
+        init_reflections_db(self.db_path)
+        init_approval_db(self.db_path)
+
+        # Create two failing reflections with the same failure mode
+        def failing_scorer(_desc, _out, _err):
+            return {
+                "scores": {"completeness": 0.3, "tool_accuracy": 0.2, "preference_alignment": 0.5, "safety_compliance": 1.0},
+                "failure_mode": "syntax_or_test_error",
+                "root_cause": "Missing import in generated helper",
+                "proposed_remediation": "new_unit_test",
+            }
+
+        evaluate_task_rubric("g1", "Task 1", "SyntaxError", scorer_fn=failing_scorer, db_path=self.db_path)
+        evaluate_task_rubric("g2", "Task 2", "SyntaxError", scorer_fn=failing_scorer, db_path=self.db_path)
+
+        result = run_reactive_tick(db_path=self.db_path)
+        self.assertTrue(result["budget_ok"])
+        self.assertEqual(len(result["mined_goals"]), 1)
+        self.assertEqual(result["mined_goals"][0]["failure_mode"], "syntax_or_test_error")
+        self.assertEqual(result["mined_goals"][0]["occurrences"], 2)
 
 
 if __name__ == "__main__":

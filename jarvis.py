@@ -295,6 +295,14 @@ if __name__ == "__main__":
     except Exception as e:
         log_error(f"MCP hydration skipped: {e}")
 
+    # Snapshot code/config baseline so the update watcher can detect later edits
+    try:
+        from modules.update_watcher import init_update_baseline
+
+        init_update_baseline()
+    except Exception as exc:
+        print(f"[UPDATE] Baseline init skipped: {exc}")
+
     # Auto-update check in background (non-blocking, controlled by user preference)
     threading.Thread(target=check_auto_update, daemon=True, name="AutoUpdateCheck").start()
 

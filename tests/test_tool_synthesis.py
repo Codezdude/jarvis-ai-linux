@@ -185,6 +185,7 @@ class TestDynamicToolDispatch(unittest.TestCase):
     def test_dispatch_tool_falls_back_to_dynamic_tool(self):
         from modules.ai import _dispatch_tool
         from modules.tools import register_dynamic_tool
+        from unittest.mock import patch
 
         def fake_dynamic_tool(value: int) -> int:
             return value * 2
@@ -196,8 +197,11 @@ class TestDynamicToolDispatch(unittest.TestCase):
             parameters_schema={"type": "object", "properties": {"value": {"type": "integer"}}},
         )
         try:
-            result = _dispatch_tool("fake_double_tool", {"value": 5})
-            self.assertEqual(result, 10)
+            # Dynamic tools now execute isolated in a subprocess; verify dispatch routes to it.
+            with patch("modules.tools.run_dynamic_tool_isolated", return_value="10") as mock_iso:
+                result = _dispatch_tool("fake_double_tool", {"value": 5})
+                self.assertEqual(result, "10")
+                mock_iso.assert_called_once()
         finally:
             DYNAMIC_TOOL_REGISTRY.pop("fake_double_tool", None)
 
@@ -210,6 +214,7 @@ class TestDynamicToolDispatch(unittest.TestCase):
     def test_dispatch_tool_dynamic_tool_error_caught_cleanly(self):
         from modules.ai import _dispatch_tool
         from modules.tools import register_dynamic_tool
+        from unittest.mock import patch
 
         def broken_tool():
             raise RuntimeError("intentional failure")
@@ -221,8 +226,13 @@ class TestDynamicToolDispatch(unittest.TestCase):
             parameters_schema={"type": "object", "properties": {}},
         )
         try:
-            result = _dispatch_tool("broken_tool_xyz", {})
-            self.assertIn("Tool error", result)
+            # The isolated runner surfaces failures as an error string, not an exception.
+            with patch(
+                "modules.tools.run_dynamic_tool_isolated",
+                return_value="Dynamic tool 'broken_tool_xyz' error: RuntimeError: intentional failure",
+            ):
+                result = _dispatch_tool("broken_tool_xyz", {})
+                self.assertIn("error", result.lower())
         finally:
             DYNAMIC_TOOL_REGISTRY.pop("broken_tool_xyz", None)
 

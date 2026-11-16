@@ -20,3 +20,5 @@
 - modules/scheduler.py: run_reactive_tick(), evaluate_task_rubric(), mine_failure_corpus() wired
 - modules/ui.py: STOP button → request_stop(), register_ui_prompt_callback(), register_budget_alert_callback(), DecisionTrace display, weekly reflections review panel
 - 42/42 tests passing, no bugs, no unwired hooks, no meaningful test gaps
+
+[FIX-CYCLE 1] Target: modules/ai.py, tests/test_tool_synthesis.py | Change: Added _dispatch_tool() helper with get_dynamic_tool() fallback in ai.py; replaced both Groq and Ollama dispatch sites to use helper; added 3 tests verifying dynamic tool execution, unknown tool error, and dynamic tool error handling | Tests: PASS 45 (baseline 42) | Installs: none | Next: Cycle 2 - wire clear_stop() & resume path

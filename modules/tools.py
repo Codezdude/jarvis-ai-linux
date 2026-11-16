@@ -725,3 +725,72 @@ def reload_jarvis_module(module_name: str) -> str:
   """Hot-reload a modified Python module into the active runtime without restarting."""
   from modules.self_improvement import reload_jarvis_module as _reload
   return _reload(module_name=module_name)
+
+
+# --- LINUX MINT NATIVE DESKTOP & SYSTEM CONTROL TOOLS ---
+import subprocess as _sp
+import os as _os
+from datetime import datetime as _dt
+
+
+def set_system_volume(level_percent: int = 50, mute: bool | None = None) -> str:
+    """Control Linux Mint audio volume or mute state via pactl."""
+    try:
+        if mute is not None:
+            flag = "1" if mute else "0"
+            _sp.run(["pactl", "set-sink-mute", "@DEFAULT_SINK@", flag], check=True)
+            return f"System audio {'muted' if mute else 'unmuted'}."
+        clamped = max(0, min(100, int(level_percent)))
+        _sp.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{clamped}%"], check=True)
+        return f"System volume set to {clamped}%."
+    except Exception as e:
+        return f"Failed to adjust system volume: {e}"
+
+
+def control_linux_app(action: str, app_name: str) -> str:
+    """Launch, focus, or close an application on Linux Mint (action: 'open', 'focus', 'close')."""
+    act = (action or "").strip().lower()
+    target = (app_name or "").strip()
+    if not target:
+        return "Application name is required."
+    try:
+        if act == "open":
+            _sp.Popen(target.split(), start_new_session=True)
+            return f"Launched '{target}'."
+        elif act == "focus":
+            res = _sp.run(["wmctrl", "-a", target], capture_output=True, text=True)
+            return f"Focused window matching '{target}'." if res.returncode == 0 else f"No open window matched '{target}'."
+        elif act == "close":
+            res = _sp.run(["wmctrl", "-c", target], capture_output=True, text=True)
+            return f"Closed window matching '{target}'." if res.returncode == 0 else f"Could not close '{target}'."
+        return "Invalid action. Use 'open', 'focus', or 'close'."
+    except Exception as e:
+        return f"App control error for '{target}': {e}"
+
+
+def manage_clipboard(action: str = "read", text: str = "") -> str:
+    """Read from or write text to the Linux X11 clipboard via xclip."""
+    act = (action or "read").strip().lower()
+    try:
+        if act == "write":
+            _sp.run(["xclip", "-selection", "clipboard"], input=text, text=True, check=True)
+            return f"Copied {len(text)} characters to clipboard."
+        res = _sp.run(["xclip", "-selection", "clipboard", "-o"], capture_output=True, text=True)
+        return res.stdout if res.returncode == 0 else "Clipboard is empty."
+    except Exception as e:
+        return f"Clipboard error: {e}"
+
+
+def capture_desktop_screenshot(filename: str = "") -> str:
+    """Capture a screenshot of the Linux Mint desktop into assets/screenshots/."""
+    try:
+        out_dir = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))), "assets", "screenshots")
+        _os.makedirs(out_dir, exist_ok=True)
+        fname = filename.strip() if filename.strip() else f"screen_{_dt.now().strftime('%Y%m%d_%H%M%S')}.png"
+        if not fname.endswith(".png"):
+            fname += ".png"
+        full_path = _os.path.join(out_dir, fname)
+        _sp.run(["scrot", full_path], check=True)
+        return f"Screenshot saved to {full_path}"
+    except Exception as e:
+        return f"Screenshot failed: {e}"

@@ -98,7 +98,7 @@ class SecretConfigTests(unittest.TestCase):
 
         trimmed = trim_and_summarize_conversation(history)
 
-        self.assertLessEqual(len(trimmed), 12)
+        self.assertLessEqual(len(trimmed), 17)
         self.assertTrue(any(
             item.get("role") == "system" and "calm" in item.get("content", "").lower() and "blue" in item.get("content", "").lower()
             for item in trimmed

@@ -76,6 +76,10 @@ from modules.tools import (
     write_local_file,
     generate_image,
     web_fetch_and_learn,
+    set_system_volume,
+    control_linux_app,
+    manage_clipboard,
+    capture_desktop_screenshot,
 )
 from modules.workspace_growth import (
     append_workspace_growth_log,
@@ -184,6 +188,10 @@ AVAILABLE_TOOLS = {
     "search_project_memory_index": search_project_memory_index,
     "search_workspace_growth_log": search_workspace_growth_log,
     "self_update_system": self_update_system,
+    "set_system_volume": set_system_volume,
+    "control_linux_app": control_linux_app,
+    "manage_clipboard": manage_clipboard,
+    "capture_desktop_screenshot": capture_desktop_screenshot,
 }
 
 # Tool schemas format for OpenAI-compatible providers (Groq & Ollama)
@@ -650,6 +658,62 @@ TOOL_SCHEMAS = [
                     "restart_after": {"type": "boolean", "description": "Whether to restart JARVIS after updating (default: true)"},
                 },
                 "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_system_volume",
+            "description": "Set Linux Mint system volume (0-100) or mute/unmute audio.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "level_percent": {"type": "integer", "description": "Volume percentage 0-100"},
+                    "mute": {"type": "boolean", "description": "True to mute, False to unmute"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "control_linux_app",
+            "description": "Open, focus, or close a Linux desktop application.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "description": "'open', 'focus', or 'close'"},
+                    "app_name": {"type": "string", "description": "Application command or window title"},
+                },
+                "required": ["action", "app_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "manage_clipboard",
+            "description": "Read or write text on the Linux Mint system clipboard.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "description": "'read' or 'write'"},
+                    "text": {"type": "string", "description": "Text to copy when action is 'write'"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "capture_desktop_screenshot",
+            "description": "Take a screenshot of the Linux Mint desktop.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "filename": {"type": "string", "description": "Optional output PNG filename"},
+                },
             },
         },
     },

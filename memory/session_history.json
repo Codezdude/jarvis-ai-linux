@@ -1,20 +1,19 @@
 [
   {
     "role": "user",
-    "content": "list the current directory"
+    "content": "hello world"
   },
   {
     "role": "assistant",
-    "content": "Let me check. <dots_function_call><list_directory></list></dots_function_call>"
+    "content": "Local response from Ollama."
   },
   {
-    "role": "tool",
-    "content": "file1.txt\nfile2.py",
-    "name": "list_directory"
+    "role": "user",
+    "content": "hello world"
   },
   {
     "role": "assistant",
-    "content": "The directory has been listed."
+    "content": "Fallback from Ollama."
   },
   {
     "role": "user",

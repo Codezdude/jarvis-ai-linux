@@ -3,6 +3,7 @@ import math
 import queue
 import threading
 import time
+from typing import Any, Dict
 import customtkinter
 import customtkinter as ctk
 import psutil
@@ -63,6 +64,10 @@ class JarvisHUD:
         set_runtime_state("ui_state", self.state)
         set_runtime_state("visible", self.visible)
         set_runtime_state("preferred_provider", self.preferred_provider)
+
+        # Register HUD callbacks for approval prompts and budget alerts
+        register_ui_prompt_callback(self._on_ui_prompt)
+        register_budget_alert_callback(self._on_budget_alert)
 
         # Window Setup (floating shell)
         self.root.overrideredirect(False)
@@ -494,6 +499,27 @@ class JarvisHUD:
                 self.update_ui("ERROR", "idle", f"Voice input unavailable: {e}")
 
         threading.Thread(target=background_listen, daemon=True).start()
+
+    # --- HUD CALLBACKS (approval prompts & budget alerts) ---
+    def _on_ui_prompt(self, payload: Dict[str, Any]) -> bool:
+        """Modal confirmation handler for approval gate UI prompts."""
+        action = payload.get("action", "action")
+        target = payload.get("target", "")
+        actor = payload.get("actor", "unknown")
+        reason = payload.get("reason", "")
+        import tkinter.messagebox as msgbox
+        confirmed = msgbox.askyesno(
+            "JARVIS Approval Required",
+            f"Actor: {actor}\nAction: {action}\nTarget: {target}\nReason: {reason}\n\nAllow?",
+        )
+        return bool(confirmed)
+
+    def _on_budget_alert(self, payload: Dict[str, Any]) -> None:
+        """HUD notification handler for budget limit / breaker trips."""
+        actor = payload.get("actor", "unknown")
+        reason = payload.get("reason", "")
+        amount = payload.get("amount", 0)
+        self.update_ui("BUDGET ALERT", "warning", f"Budget alert: {actor} — {reason} ({amount})")
 
     # --- WOBBLY VORTEX CANVAS ANIMATION ---
     def animate_rings(self):

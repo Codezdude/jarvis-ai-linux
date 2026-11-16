@@ -301,42 +301,56 @@ def apply_self_improvement(
         if not valid:
             return f"Self-improvement aborted before writing: {syntax_msg}"
 
-    # Step 2: Backup existing file
-    backup_path = ""
-    if os.path.exists(safe_path):
-        backup_path = create_backup(filepath)
-
-    # Step 3: Apply the file modification
-    try:
-        os.makedirs(os.path.dirname(safe_path), exist_ok=True)
-        with open(safe_path, "w", encoding="utf-8") as f:
-            f.write(new_content)
-    except Exception as write_err:
-        return f"Failed to write file {filepath}: {write_err}"
-
-    # Step 4: Verification via test suite
-    if run_tests and is_python:
-        # Check file compilation on disk
-        valid_disk, disk_err = validate_code_syntax(filepath=filepath)
-        if not valid_disk:
-            rollback_status = rollback_file(filepath, backup_path) if backup_path else "No backup available"
-            return f"Self-improvement aborted and rolled back due to disk compilation error: {disk_err}. {rollback_status}"
-
-        passed, test_output = run_project_tests()
-        if not passed:
-            rollback_status = rollback_file(filepath, backup_path) if backup_path else "No backup available"
+    # Step 2: Acquire an exclusive lock on the target module so a concurrent
+    # cycle (or a live HUD edit) cannot write the same file at the same time.
+    rel_path = os.path.relpath(safe_path, PROJECT_ROOT)
+    lock = None
+    if rel_path.startswith("modules/") and rel_path.endswith(".py"):
+        lock = acquire_module_lock(rel_path)
+        if lock is None:
             return (
-                f"Self-improvement failed verification tests and was automatically rolled back!\n"
-                f"Test failure output:\n{test_output[:600]}\n"
-                f"Rollback status: {rollback_status}"
+                f"Self-improvement aborted: could not acquire exclusive lock on {rel_path} "
+                f"within {DEFAULT_LOCK_TIMEOUT_SEC}s — another cycle or the live HUD holds it."
             )
 
-    # Step 5: Post-success dynamic reloading if module was already loaded
-    rel_path = os.path.relpath(safe_path, PROJECT_ROOT)
-    if rel_path.endswith(".py"):
-        mod_candidate = rel_path[:-3].replace(os.sep, ".").replace("/", ".")
-        if mod_candidate in sys.modules:
-            reload_jarvis_module(mod_candidate)
+    try:
+        # Step 3: Backup existing file
+        backup_path = ""
+        if os.path.exists(safe_path):
+            backup_path = create_backup(filepath)
 
-    log_info(f"Self-improvement successfully committed to {filepath}")
-    return f"Successfully applied self-improvement to {filepath}. Tests verified and passed."
+        # Step 4: Apply the file modification
+        try:
+            os.makedirs(os.path.dirname(safe_path), exist_ok=True)
+            with open(safe_path, "w", encoding="utf-8") as f:
+                f.write(new_content)
+        except Exception as write_err:
+            return f"Failed to write file {filepath}: {write_err}"
+
+        # Step 5: Verification via test suite
+        if run_tests and is_python:
+            # Check file compilation on disk
+            valid_disk, disk_err = validate_code_syntax(filepath=filepath)
+            if not valid_disk:
+                rollback_status = rollback_file(filepath, backup_path) if backup_path else "No backup available"
+                return f"Self-improvement aborted and rolled back due to disk compilation error: {disk_err}. {rollback_status}"
+
+            passed, test_output = run_project_tests()
+            if not passed:
+                rollback_status = rollback_file(filepath, backup_path) if backup_path else "No backup available"
+                return (
+                    f"Self-improvement failed verification tests and was automatically rolled back!\n"
+                    f"Test failure output:\n{test_output[:600]}\n"
+                    f"Rollback status: {rollback_status}"
+                )
+
+        # Step 6: Post-success dynamic reloading if module was already loaded
+        if rel_path.endswith(".py"):
+            mod_candidate = rel_path[:-3].replace(os.sep, ".").replace("/", ".")
+            if mod_candidate in sys.modules:
+                reload_jarvis_module(mod_candidate)
+
+        log_info(f"Self-improvement successfully committed to {filepath}")
+        return f"Successfully applied self-improvement to {filepath}. Tests verified and passed."
+    finally:
+        release_lock(lock)

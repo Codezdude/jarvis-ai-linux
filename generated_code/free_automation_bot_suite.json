@@ -17,7 +17,7 @@
     {
       "bot": "experiment_review_bot",
       "status": "ok",
-      "experiments_seen": 35,
+      "experiments_seen": 36,
       "summary": "Recent experiment folders were scanned to find reusable patterns and promising concept directions.",
       "entries": [
         {
@@ -49,7 +49,7 @@
     {
       "bot": "quality_guard_bot",
       "status": "ok",
-      "files_scanned": 27,
+      "files_scanned": 45,
       "issues_found": 0,
       "summary": "A local syntax scan completed; the project quality signals were logged for future learning loops.",
       "issues": []
@@ -76,7 +76,7 @@
         },
         {
           "source": "https://pypi.org/project/Pillow/",
-          "summary": "Public source captured: pillow · PyPI <link rel=\"alternate\" type=\"application/rss+xml\" title=\"RSS: 40 newest packages\""
+          "summary": "Public source captured: Client Challenge #loading-error { font-size: 16px; font-family: 'Inter', sans-serif; margin-top: 10px; margin-left: 10px; display: none; } <span clas"
         },
         {
           "source": "https://playwright.dev/",

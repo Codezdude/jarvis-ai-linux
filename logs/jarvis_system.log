@@ -1232,3 +1232,147 @@
 [2026-11-16 08:20:00] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082000_tests___test_dummy_module.py
 [2026-11-16 08:20:00] [INFO] JARVIS: Dynamically reloaded module: modules.logger
 [2026-11-16 08:20:00] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082000_modules___test_dynamic_tools.py
+[2026-11-16 08:20:03] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082003_tests___test_dummy_module.py
+[2026-11-16 08:20:03] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:20:03] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082003_tests___test_dummy_module.py
+[2026-11-16 08:20:03] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082003_tests___test_dummy_module.py
+[2026-11-16 08:20:03] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:20:03] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082003_modules___test_dynamic_tools.py
+[2026-11-16 08:20:07] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082007_tests___test_dummy_module.py
+[2026-11-16 08:20:07] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:20:07] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082007_tests___test_dummy_module.py
+[2026-11-16 08:20:07] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082007_tests___test_dummy_module.py
+[2026-11-16 08:20:07] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:20:07] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082007_modules___test_dynamic_tools.py
+[2026-11-16 08:20:10] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082010_tests___test_dummy_module.py
+[2026-11-16 08:20:10] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:20:10] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082010_tests___test_dummy_module.py
+[2026-11-16 08:20:10] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082010_tests___test_dummy_module.py
+[2026-11-16 08:20:10] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:20:10] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082010_modules___test_dynamic_tools.py
+[2026-11-16 08:20:14] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082014_tests___test_dummy_module.py
+[2026-11-16 08:20:14] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:20:14] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082014_tests___test_dummy_module.py
+[2026-11-16 08:20:14] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082014_tests___test_dummy_module.py
+[2026-11-16 08:20:14] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:20:14] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082014_modules___test_dynamic_tools.py
+[2026-11-16 08:20:17] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082017_tests___test_dummy_module.py
+[2026-11-16 08:20:17] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:20:17] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082017_tests___test_dummy_module.py
+[2026-11-16 08:20:17] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082017_tests___test_dummy_module.py
+[2026-11-16 08:20:17] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:20:17] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082017_modules___test_dynamic_tools.py
+[2026-11-16 08:20:20] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082020_tests___test_dummy_module.py
+[2026-11-16 08:20:20] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:20:20] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082020_tests___test_dummy_module.py
+[2026-11-16 08:20:20] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082020_tests___test_dummy_module.py
+[2026-11-16 08:20:20] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:20:21] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082021_modules___test_dynamic_tools.py
+[2026-11-16 08:20:24] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082024_tests___test_dummy_module.py
+[2026-11-16 08:20:24] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:20:24] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082024_tests___test_dummy_module.py
+[2026-11-16 08:20:24] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082024_tests___test_dummy_module.py
+[2026-11-16 08:20:24] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:20:24] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082024_modules___test_dynamic_tools.py
+[2026-11-16 08:20:28] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082028_tests___test_dummy_module.py
+[2026-11-16 08:20:28] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:20:28] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082028_tests___test_dummy_module.py
+[2026-11-16 08:20:28] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082028_tests___test_dummy_module.py
+[2026-11-16 08:20:28] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:20:28] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082028_modules___test_dynamic_tools.py
+[2026-11-16 08:20:31] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082031_tests___test_dummy_module.py
+[2026-11-16 08:20:31] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:20:31] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082031_tests___test_dummy_module.py
+[2026-11-16 08:20:31] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082031_tests___test_dummy_module.py
+[2026-11-16 08:20:31] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:20:32] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082032_modules___test_dynamic_tools.py
+[2026-11-16 08:20:35] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082035_tests___test_dummy_module.py
+[2026-11-16 08:20:35] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:20:35] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082035_tests___test_dummy_module.py
+[2026-11-16 08:20:35] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082035_tests___test_dummy_module.py
+[2026-11-16 08:20:35] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:20:35] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082035_modules___test_dynamic_tools.py
+[2026-11-16 08:20:39] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082039_tests___test_dummy_module.py
+[2026-11-16 08:20:39] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:20:39] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082039_tests___test_dummy_module.py
+[2026-11-16 08:20:39] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082039_tests___test_dummy_module.py
+[2026-11-16 08:20:39] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:20:39] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082039_modules___test_dynamic_tools.py
+[2026-11-16 08:20:43] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082043_tests___test_dummy_module.py
+[2026-11-16 08:20:43] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:20:43] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082043_tests___test_dummy_module.py
+[2026-11-16 08:20:43] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082043_tests___test_dummy_module.py
+[2026-11-16 08:20:43] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:20:43] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082043_modules___test_dynamic_tools.py
+[2026-11-16 08:20:47] [INFO] JARVIS: Restored /home/millennium/jarvis_project/modules/_test_dynamic_tools.py from backup /home/millennium/jarvis_project/.backups/20261116_081947_modules___test_dynamic_tools.py
+[2026-11-16 08:20:47] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082047_tests___test_dummy_module.py
+[2026-11-16 08:20:47] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:20:47] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082047_tests___test_dummy_module.py
+[2026-11-16 08:20:47] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082047_tests___test_dummy_module.py
+[2026-11-16 08:20:47] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:20:48] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082048_modules___test_dynamic_tools.py
+[2026-11-16 08:20:48] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082048_modules___test_dynamic_tools.py
+[2026-11-16 08:20:55] [INFO] httpx2: HTTP Request: GET http://testserver/health "HTTP/1.1 200 OK"
+[2026-11-16 08:20:55] [INFO] httpx2: HTTP Request: GET http://testserver/health "HTTP/1.1 200 OK"
+[2026-11-16 08:20:55] [INFO] httpx2: HTTP Request: GET http://testserver/health "HTTP/1.1 429 Too Many Requests"
+[2026-11-16 08:20:55] [INFO] httpx2: HTTP Request: GET http://testserver/health "HTTP/1.1 401 Unauthorized"
+[2026-11-16 08:20:55] [INFO] httpx2: HTTP Request: GET http://testserver/health "HTTP/1.1 200 OK"
+[2026-11-16 08:20:56] [INFO] JARVIS: Generated image at /home/millennium/jarvis_project/assets/tech_ir_test.png
+[2026-11-16 08:20:57] [INFO] JARVIS: Restored /home/millennium/jarvis_project/modules/_test_dynamic_tools.py from backup /home/millennium/jarvis_project/.backups/20261116_081957_modules___test_dynamic_tools.py
+[2026-11-16 08:20:57] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082057_tests___test_dummy_module.py
+[2026-11-16 08:20:57] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:20:57] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082057_tests___test_dummy_module.py
+[2026-11-16 08:20:57] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082057_tests___test_dummy_module.py
+[2026-11-16 08:20:57] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:20:58] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082058_modules___test_dynamic_tools.py
+[2026-11-16 08:20:58] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082058_tests___test_dummy_module.py
+[2026-11-16 08:20:58] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:20:58] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082058_tests___test_dummy_module.py
+[2026-11-16 08:20:58] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082058_tests___test_dummy_module.py
+[2026-11-16 08:20:58] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:20:59] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082059_modules___test_dynamic_tools.py
+[2026-11-16 08:21:03] [INFO] JARVIS: Restored /home/millennium/jarvis_project/modules/_test_dynamic_tools.py from backup /home/millennium/jarvis_project/.backups/20261116_082003_modules___test_dynamic_tools.py
+[2026-11-16 08:21:10] [INFO] JARVIS: Restored /home/millennium/jarvis_project/modules/_test_dynamic_tools.py from backup /home/millennium/jarvis_project/.backups/20261116_082010_modules___test_dynamic_tools.py
+[2026-11-16 08:21:12] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082112_tests___test_dummy_module.py
+[2026-11-16 08:21:12] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:21:12] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082112_tests___test_dummy_module.py
+[2026-11-16 08:21:12] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082112_tests___test_dummy_module.py
+[2026-11-16 08:21:12] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:21:13] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082113_modules___test_dynamic_tools.py
+[2026-11-16 08:21:14] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082114_tests___test_dummy_module.py
+[2026-11-16 08:21:14] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:21:14] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082114_tests___test_dummy_module.py
+[2026-11-16 08:21:14] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082114_tests___test_dummy_module.py
+[2026-11-16 08:21:14] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:21:14] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082114_modules___test_dynamic_tools.py
+[2026-11-16 08:21:17] [INFO] JARVIS: Restored /home/millennium/jarvis_project/modules/_test_dynamic_tools.py from backup /home/millennium/jarvis_project/.backups/20261116_082017_modules___test_dynamic_tools.py
+[2026-11-16 08:21:24] [INFO] JARVIS: Restored /home/millennium/jarvis_project/modules/_test_dynamic_tools.py from backup /home/millennium/jarvis_project/.backups/20261116_082024_modules___test_dynamic_tools.py
+[2026-11-16 08:21:30] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082130_tests___test_dummy_module.py
+[2026-11-16 08:21:30] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:21:30] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082130_tests___test_dummy_module.py
+[2026-11-16 08:21:30] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082130_tests___test_dummy_module.py
+[2026-11-16 08:21:30] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:21:31] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082131_modules___test_dynamic_tools.py
+[2026-11-16 08:21:31] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082131_tests___test_dummy_module.py
+[2026-11-16 08:21:31] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:21:31] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082131_tests___test_dummy_module.py
+[2026-11-16 08:21:31] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082131_tests___test_dummy_module.py
+[2026-11-16 08:21:31] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:21:31] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082131_modules___test_dynamic_tools.py
+[2026-11-16 08:21:32] [INFO] JARVIS: Restored /home/millennium/jarvis_project/modules/_test_dynamic_tools.py from backup /home/millennium/jarvis_project/.backups/20261116_082032_modules___test_dynamic_tools.py
+[2026-11-16 08:21:39] [INFO] JARVIS: Restored /home/millennium/jarvis_project/modules/_test_dynamic_tools.py from backup /home/millennium/jarvis_project/.backups/20261116_082039_modules___test_dynamic_tools.py
+[2026-11-16 08:21:43] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082143_tests___test_dummy_module.py
+[2026-11-16 08:21:43] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:21:43] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082143_tests___test_dummy_module.py
+[2026-11-16 08:21:43] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082143_tests___test_dummy_module.py
+[2026-11-16 08:21:43] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:21:44] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082144_tests___test_dummy_module.py
+[2026-11-16 08:21:44] [INFO] JARVIS: Self-improvement successfully committed to /home/millennium/jarvis_project/tests/_test_dummy_module.py
+[2026-11-16 08:21:44] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082144_tests___test_dummy_module.py
+[2026-11-16 08:21:44] [INFO] JARVIS: Restored /home/millennium/jarvis_project/tests/_test_dummy_module.py from backup /home/millennium/jarvis_project/.backups/20261116_082144_tests___test_dummy_module.py
+[2026-11-16 08:21:44] [INFO] JARVIS: Dynamically reloaded module: modules.logger
+[2026-11-16 08:21:44] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082144_modules___test_dynamic_tools.py
+[2026-11-16 08:21:44] [INFO] JARVIS: Created safety backup: /home/millennium/jarvis_project/.backups/20261116_082144_modules___test_dynamic_tools.py
+[2026-11-16 08:26:18] [INFO] httpx: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+[2026-11-16 08:26:20] [INFO] JARVIS: Speech playback interrupted by user.
+[2026-11-16 08:26:20] [INFO] JARVIS: Speech playback interrupted by user.

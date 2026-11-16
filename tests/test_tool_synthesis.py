@@ -15,8 +15,8 @@ class TestToolSynthesisPipeline(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.db_path = os.path.join(self.temp_dir.name, "test_synthesis.db")
         self.audit_path = os.path.join(self.temp_dir.name, "audit.jsonl")
-        self.mock_module_path = os.path.join(PROJECT_ROOT, "modules", "_test_dynamic_tools.py")
-        self.mock_tests_dir = os.path.join(PROJECT_ROOT, "tests")
+        self.mock_module_path = os.path.join(PROJECT_ROOT, "data", "_test_dynamic_tools.py")
+        self.mock_tests_dir = os.path.join(PROJECT_ROOT, "data")
 
         self.audit_patcher = patch("modules.audit.DEFAULT_AUDIT_LOG", self.audit_path)
         self.db_patcher = patch("modules.budget.DEFAULT_DB_PATH", self.db_path)
@@ -33,6 +33,9 @@ class TestToolSynthesisPipeline(unittest.TestCase):
         init_budget_db(self.db_path)
         init_dynamic_tools_db(self.db_path)
         set_autonomy_level("self", AutonomyLevel.L3_AUTONOMOUS_POLICY, actor="user", db_path=self.db_path)
+        # Ensure clean state for module path
+        if os.path.exists(self.mock_module_path):
+            os.remove(self.mock_module_path)
 
     def tearDown(self):
         DYNAMIC_TOOL_REGISTRY.clear()

@@ -185,3 +185,13 @@
 2026-11-16 02:07:27,715 WARNING Rate limit triggered for testclient on /health
 2026-11-16 02:07:27,732 WARNING Rejected unauthorized request from testclient for /health
 2026-11-16 02:07:27,738 INFO GET /health from testclient
+2026-11-16 02:11:24,786 INFO GET /health from testclient
+2026-11-16 02:11:24,795 INFO GET /health from testclient
+2026-11-16 02:11:24,801 WARNING Rate limit triggered for testclient on /health
+2026-11-16 02:11:24,821 WARNING Rejected unauthorized request from testclient for /health
+2026-11-16 02:11:24,825 INFO GET /health from testclient
+2026-11-16 02:11:46,682 INFO GET /health from testclient
+2026-11-16 02:11:46,708 INFO GET /health from testclient
+2026-11-16 02:11:46,723 WARNING Rate limit triggered for testclient on /health
+2026-11-16 02:11:46,755 WARNING Rejected unauthorized request from testclient for /health
+2026-11-16 02:11:46,765 INFO GET /health from testclient

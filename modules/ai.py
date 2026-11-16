@@ -176,6 +176,35 @@ def _safe_tool_name(fn) -> str:
     return getattr(fn, "__name__", getattr(getattr(fn, "func", None), "__name__", "unknown_tool"))
 
 
+def _normalize_schema_for_gemini(schema):
+    """Return a Gemini-compatible copy of a JSON Schema.
+
+    Gemini's schema parser requires a scalar ``type`` and rejects JSON Schema's
+    union form (``"type": ["string", "object"]``) with
+    ``'list' object has no attribute 'upper'``.  Collapse unions to the first
+    non-null entry and recurse through ``properties``/``items``.
+    """
+    if isinstance(schema, list):
+        return [_normalize_schema_for_gemini(item) for item in schema]
+    if not isinstance(schema, dict):
+        return schema
+    normalized = {}
+    for key, value in schema.items():
+        if key == "type" and isinstance(value, list):
+            non_null = [entry for entry in value if entry != "null"]
+            normalized[key] = non_null[0] if non_null else "string"
+        elif key == "properties" and isinstance(value, dict):
+            normalized[key] = {
+                prop_name: _normalize_schema_for_gemini(prop_schema)
+                for prop_name, prop_schema in value.items()
+            }
+        elif key == "items":
+            normalized[key] = _normalize_schema_for_gemini(value)
+        else:
+            normalized[key] = value
+    return normalized
+
+
 def _build_gemini_tools(schemas: list[dict]):
     """Convert OpenAI-style tool schemas into Gemini ``types.Tool`` objects.
 
@@ -192,7 +221,9 @@ def _build_gemini_tools(schemas: list[dict]):
         fn = schema.get("function", schema)
         name = fn.get("name", "unknown_tool")
         description = fn.get("description", "")
-        parameters = fn.get("parameters", {"type": "object", "properties": {}})
+        parameters = _normalize_schema_for_gemini(
+            fn.get("parameters", {"type": "object", "properties": {}})
+        )
         try:
             fd = genai.types.FunctionDeclaration(
                 name=name,

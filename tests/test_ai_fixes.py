@@ -7,10 +7,57 @@ from unittest.mock import MagicMock, patch
 
 from modules.ai import (
     _build_gemini_tools,
+    _normalize_schema_for_gemini,
     _query_needs_tools,
     _safe_tool_name,
     ask_local_brain_with_tools,
 )
+
+
+class TestGeminiSchemaUnionType(unittest.TestCase):
+    """Gemini rejects JSON-Schema union types (``"type": ["string", "object"]``)."""
+
+    def test_normalize_collapses_union_to_first_non_null(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "pack_input": {"type": ["string", "object"], "description": "pack"},
+                "publish_time": {"type": ["string", "null"]},
+            },
+            "required": ["pack_input"],
+        }
+        out = _normalize_schema_for_gemini(schema)
+        self.assertEqual(out["properties"]["pack_input"]["type"], "string")
+        self.assertEqual(out["properties"]["publish_time"]["type"], "string")
+        # Original schema is not mutated.
+        self.assertEqual(schema["properties"]["pack_input"]["type"], ["string", "object"])
+
+    def test_normalize_recurses_into_items(self):
+        schema = {"type": "array", "items": {"type": ["number", "null"]}}
+        out = _normalize_schema_for_gemini(schema)
+        self.assertEqual(out["items"]["type"], "number")
+
+    def test_normalize_all_null_union_falls_back_to_string(self):
+        out = _normalize_schema_for_gemini({"type": ["null"]})
+        self.assertEqual(out["type"], "string")
+
+    def test_build_gemini_tools_accepts_union_type_schema(self):
+        schemas = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "union_tool",
+                    "description": "Tool with a union-typed parameter",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"pack_input": {"type": ["string", "object"]}},
+                        "required": ["pack_input"],
+                    },
+                },
+            }
+        ]
+        tools = _build_gemini_tools(schemas)
+        self.assertEqual(len(tools), 1)
 
 
 class TestGeminiToolDeclaration(unittest.TestCase):

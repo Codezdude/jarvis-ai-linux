@@ -86,6 +86,7 @@ from modules.tools import (
     control_linux_app,
     manage_clipboard,
     capture_desktop_screenshot,
+    get_all_dynamic_tool_schemas,
 )
 from modules.workspace_growth import (
     append_workspace_growth_log,
@@ -1740,7 +1741,7 @@ def ask_local_brain_with_tools(query: str) -> str:
     print(f"[ROUTER] Request-aware provider order (Timeout: 12s per tier): {provider_order}")
 
     use_tools = _query_needs_tools(query)
-    active_tools = TOOL_SCHEMAS if use_tools else None
+    active_tools = (TOOL_SCHEMAS + get_all_dynamic_tool_schemas()) if use_tools else None
 
     for provider in provider_order:
         if _is_provider_cooling_down(provider):

@@ -77,10 +77,11 @@ def _validate_tool_name(tool_name: str) -> None:
 
 
 def _validate_ast_and_compile(tool_name: str, function_code: str, test_code: str) -> None:
-    """Validates syntax via compile() and inspects the AST to guarantee:
-    1. Both function_code and test_code compile cleanly.
-    2. A top-level function matching `tool_name` is defined.
-    3. No forbidden shell/eval execution primitives appear in the synthesized tool.
+    """Validates syntax via compile() and inspects the AST.
+
+    Guarantees both function_code and test_code compile cleanly, a top-level
+    function matching `tool_name` is defined, and no forbidden shell/eval
+    execution primitives appear in the synthesized tool.
     """
     compile(function_code, f"<synthesized:{tool_name}>", "exec")
     compile(test_code, f"<synthesized_test:{tool_name}>", "exec")
@@ -98,20 +99,25 @@ def _check_ast_forbidden(tree: ast.AST, tool_name: str) -> None:
         raise ValueError(f"Synthesized code must define a top-level function named '{tool_name}'.")
 
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name.split(".")[0] in ("subprocess", "pty", "ctypes"):
-                    raise ValueError(f"Forbidden import in synthesized tool: {alias.name}")
-        elif isinstance(node, ast.ImportFrom):
-            if node.module and node.module.split(".")[0] in ("subprocess", "pty", "ctypes"):
-                raise ValueError(f"Forbidden import-from in synthesized tool: {node.module}")
-        elif isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name) and node.func.id in FORBIDDEN_CALL_NAMES:
-                raise ValueError(f"Forbidden builtin call in synthesized tool: {node.func.id}")
-            if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
-                pair = (node.func.value.id, node.func.attr)
-                if pair in FORBIDDEN_MODULE_ATTRS:
-                    raise ValueError(f"Forbidden module call in synthesized tool: {pair[0]}.{pair[1]}")
+        _check_ast_node(node)
+
+
+def _check_ast_node(node: ast.AST) -> None:
+    """Checks a single AST node for forbidden constructs."""
+    if isinstance(node, ast.Import):
+        for alias in node.names:
+            if alias.name.split(".")[0] in ("subprocess", "pty", "ctypes"):
+                raise ValueError(f"Forbidden import in synthesized tool: {alias.name}")
+    elif isinstance(node, ast.ImportFrom):
+        if node.module and node.module.split(".")[0] in ("subprocess", "pty", "ctypes"):
+            raise ValueError(f"Forbidden import-from in synthesized tool: {node.module}")
+    elif isinstance(node, ast.Call):
+        if isinstance(node.func, ast.Name) and node.func.id in FORBIDDEN_CALL_NAMES:
+            raise ValueError(f"Forbidden builtin call in synthesized tool: {node.func.id}")
+        if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
+            pair = (node.func.value.id, node.func.attr)
+            if pair in FORBIDDEN_MODULE_ATTRS:
+                raise ValueError(f"Forbidden module call in synthesized tool: {pair[0]}.{pair[1]}")
 
 
 def _draft_tool_with_ollama(
@@ -206,14 +212,7 @@ def synthesize_and_register_tool(
     tests_dir: str = TESTS_DIR,
     db_path: str = DEFAULT_DB_PATH,
 ) -> dict[str, Any]:
-    """End-to-end Tool Synthesis pipeline:
-    1. Checks budget (self_mod) and approval gate (elevated self-modification).
-    2. Drafts function + unit test (via generator_fn or local Ollama).
-    3. Validates syntax via compile() and AST safety rules.
-    4. Writes code and test through safe_write_file (PROTECTED_GLOBS -> learning.py).
-    5. Runs unit tests; on pass registers in SQLite + DYNAMIC_TOOL_REGISTRY and logs to audit.log.
-       On fail, rolls back all file edits and logs failure.
-    """
+    """End-to-end Tool Synthesis pipeline: budget and approval gates, draft via Ollama, compile/AST validation, protected write, isolated test run, and registration with rollback on failure."""
     init_dynamic_tools_db(db_path)
     _validate_tool_name(tool_name)
 

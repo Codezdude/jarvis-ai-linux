@@ -128,6 +128,7 @@ def execute_plan_step(
     db_path: str = DEFAULT_DB_PATH,
 ) -> str:
     """Executes a single planned step using prior verified outputs as context.
+
     Autonomous goals run strictly on local Ollama.
     """
     if executor_fn is not None:
@@ -167,6 +168,7 @@ def verify_step_output(
     db_path: str = DEFAULT_DB_PATH,
 ) -> dict[str, Any]:
     """Checks whether `step_output` satisfies `step['expected_outcome']` before proceeding.
+
     Returns {'verified': bool, 'reason': str}.
     """
     if verifier_fn is not None:
@@ -221,9 +223,7 @@ def replan_from_failure(
     goal_id: str | None = None,
     db_path: str = DEFAULT_DB_PATH,
 ) -> list[dict[str, Any]]:
-    """Generates a revised sequence of steps starting from the failure point,
-    preserving already completed work.
-    """
+    """Generates a revised sequence of steps starting from the failure point, preserving already completed work."""
     budget = max(1, remaining_step_budget)
     if replan_fn is not None:
         raw_steps = replan_fn(goal_description, completed_steps, failed_step, failure_reason)
@@ -280,6 +280,7 @@ def planned_step_executor(
     db_path: str = DEFAULT_DB_PATH,
 ) -> dict[str, Any]:
     """Plugs into modules/scheduler.py's process_one_idle_goal(...) loop.
+
     Performs one bounded Plan -> Execute -> Verify -> Replan cycle per call,
     mutating `checkpoint` in place so scheduler.py persists it immediately.
     """

@@ -191,6 +191,7 @@ def evaluate_task_rubric(
     db_path: str = DEFAULT_DB_PATH,
 ) -> dict[str, Any]:
     """Scores an autonomous task output against the rubric and stores the reflection.
+
     Failed evaluations (overall_score < pass_threshold or execution_error is set)
     are archived in the failure corpus for pattern mining and weekly HUD review.
     """
@@ -278,10 +279,7 @@ def mine_failure_corpus(
     min_occurrences: int = 2,
     db_path: str = DEFAULT_DB_PATH,
 ) -> list[dict[str, Any]]:
-    """Scans unmined failure reflections, clusters them by failure_mode, and converts
-    recurring failure modes (>= min_occurrences) into actionable self-improvement goals
-    (new unit tests, prompt adjustments, or tool-schema updates).
-    """
+    """Scans unmined failure reflections, clusters them by failure_mode, and converts recurring failure modes (>= min_occurrences) into actionable self-improvement goals (new unit tests, prompt adjustments, or tool-schema updates)."""
     init_reflections_db(db_path)
     created_goals: list[dict[str, Any]] = []
 
@@ -365,19 +363,18 @@ def get_reflections_for_review(
 ) -> list[dict[str, Any]]:
     """Fetches reflections for the HUD weekly human review surface."""
     init_reflections_db(db_path)
-    clauses: list[str] = []
-    if unreviewed_only:
-        clauses.append("reviewed_by_human = 0")
-    if failures_only:
-        clauses.append("passed = 0")
+    if unreviewed_only and failures_only:
+        query = "SELECT * FROM reflections WHERE reviewed_by_human = 0 AND passed = 0 ORDER BY id DESC LIMIT ?"
+    elif unreviewed_only:
+        query = "SELECT * FROM reflections WHERE reviewed_by_human = 0 ORDER BY id DESC LIMIT ?"
+    elif failures_only:
+        query = "SELECT * FROM reflections WHERE passed = 0 ORDER BY id DESC LIMIT ?"
+    else:
+        query = "SELECT * FROM reflections ORDER BY id DESC LIMIT ?"
 
-    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     with _REFLECTIONS_LOCK:
         with _get_connection(db_path) as conn:
-            rows = conn.execute(
-                f"SELECT * FROM reflections {where_sql} ORDER BY id DESC LIMIT ?",
-                (int(limit),),
-            ).fetchall()
+            rows = conn.execute(query, (int(limit),)).fetchall()
 
     results = []
     for r in rows:

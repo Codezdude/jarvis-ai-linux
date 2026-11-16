@@ -179,5 +179,53 @@ class TestToolSynthesisPipeline(unittest.TestCase):
         self.assertFalse(os.path.exists(module_path))
 
 
+class TestDynamicToolDispatch(unittest.TestCase):
+    """Verifies that modules/ai.py's _dispatch_tool falls back to dynamic tools."""
+
+    def test_dispatch_tool_falls_back_to_dynamic_tool(self):
+        from modules.ai import _dispatch_tool
+        from modules.tools import register_dynamic_tool
+
+        def fake_dynamic_tool(value: int) -> int:
+            return value * 2
+
+        register_dynamic_tool(
+            tool_name="fake_double_tool",
+            func=fake_dynamic_tool,
+            description="Doubles a value",
+            parameters_schema={"type": "object", "properties": {"value": {"type": "integer"}}},
+        )
+        try:
+            result = _dispatch_tool("fake_double_tool", {"value": 5})
+            self.assertEqual(result, 10)
+        finally:
+            DYNAMIC_TOOL_REGISTRY.pop("fake_double_tool", None)
+
+    def test_dispatch_tool_unknown_returns_structured_error(self):
+        from modules.ai import _dispatch_tool
+
+        result = _dispatch_tool("nonexistent_tool_xyz", {})
+        self.assertIn("Unknown tool", result)
+
+    def test_dispatch_tool_dynamic_tool_error_caught_cleanly(self):
+        from modules.ai import _dispatch_tool
+        from modules.tools import register_dynamic_tool
+
+        def broken_tool():
+            raise RuntimeError("intentional failure")
+
+        register_dynamic_tool(
+            tool_name="broken_tool_xyz",
+            func=broken_tool,
+            description="Always fails",
+            parameters_schema={"type": "object", "properties": {}},
+        )
+        try:
+            result = _dispatch_tool("broken_tool_xyz", {})
+            self.assertIn("Tool error", result)
+        finally:
+            DYNAMIC_TOOL_REGISTRY.pop("broken_tool_xyz", None)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -84,6 +84,7 @@ class JarvisHUD:
         self._rendered_messages = []
         self._current_session_id = "default"
         self._settings_modal = None
+        self._partial_preview_active = False
         try:
             self._hud_always_on_top = bool(get_runtime_settings().get("hud_always_on_top", True))
         except Exception:
@@ -535,8 +536,7 @@ class JarvisHUD:
                 self._settings_modal.focus()
                 return
             except Exception:
-        self._settings_modal = None
-        self._partial_preview_active = False
+                self._settings_modal = None
 
         try:
             settings = get_runtime_settings()
@@ -780,6 +780,40 @@ class JarvisHUD:
         except Exception as e:
             log_error(f"Failed to save routing settings: {e}")
             self.update_ui("SAVE ERROR", "idle", f"Failed to save settings: {e}")
+
+    def _compact_current_chat(self):
+        """Background: compact the active chat session into a rolling summary."""
+        session_id = self._current_session_id
+
+        def _worker():
+            try:
+                from modules.memory_consolidation import compact_session_if_needed
+
+                summary = compact_session_if_needed(session_id=session_id)
+                if summary:
+                    self.update_ui("CHAT COMPACTED", "idle", "Older turns summarized.")
+                else:
+                    self.update_ui("CHAT OK", "idle", "Chat is already compact.")
+            except Exception as e:
+                log_error(f"Compaction failed: {e}")
+                self.update_ui("COMPACTION ERROR", "idle", f"Compaction failed: {e}")
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _save_mcp_settings(self):
+        """Persist per-server MCP enable/disable switches."""
+        switches = getattr(self, "_mcp_switches", {})
+        if not switches:
+            return
+        try:
+            from modules.mcp_bridge import set_mcp_server_enabled
+
+            for server_name, switch in switches.items():
+                set_mcp_server_enabled(server_name, bool(switch.get()))
+            self.update_ui("MCP SAVED", "idle", "MCP server toggles saved.")
+        except Exception as e:
+            log_error(f"Failed to save MCP settings: {e}")
+            self.update_ui("MCP SAVE ERROR", "idle", f"Failed to save MCP settings: {e}")
 
     def load_review_data(self):
         reflections = get_reflections_for_review(

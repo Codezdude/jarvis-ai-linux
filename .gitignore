@@ -14,3 +14,6 @@ __pycache__/
 
 logs/
 .backups/
+
+# runtime chat state
+memory/session_history.json

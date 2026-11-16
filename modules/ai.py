@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import threading
 import time
+import traceback
 import functools
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -1973,7 +1974,43 @@ def _dispatch_tool(func_name: str, func_args: dict) -> str:
     try:
         return handler(**func_args) if func_args else handler()
     except Exception as tool_err:
-        return f"Tool error in {func_name}: {tool_err}"
+        return _self_heal_tool_error(func_name, tool_err, func_args)
+
+
+def _self_heal_tool_error(func_name: str, exc: Exception, func_args: Optional[dict] = None) -> str:
+    """Turn a tool exception into an actionable message so the model can self-correct.
+
+    Captures the exception type, message, and the deepest frame, logs the full
+    traceback for diagnostics, records a reflection for later learning, and
+    returns a compact structured error the agent can reason about and retry.
+    """
+    tb = traceback.format_exc()
+    last_frame = ""
+    frames = traceback.extract_tb(exc.__traceback__)
+    if frames:
+        frame = frames[-1]
+        last_frame = f"{os.path.basename(frame.filename)}:{frame.lineno} in {frame.name}"
+    try:
+        log_error(f"Tool '{func_name}' raised {type(exc).__name__}: {exc}\n{tb}")
+    except Exception:
+        pass
+    try:
+        from modules.memory import save_reflection
+
+        save_reflection(
+            query=f"tool_call:{func_name}",
+            raw_response=str(exc),
+            final_response="",
+            critique=f"Tool {func_name} failed with {type(exc).__name__}: {exc}",
+            category="tool_failure",
+        )
+    except Exception:
+        pass
+    location = f" ({last_frame})" if last_frame else ""
+    return (
+        f"Tool error in {func_name}: {type(exc).__name__}: {exc}{location}. "
+        f"Review the arguments {func_args or {}} and retry with corrected input."
+    )
 
 
 _XML_TOOL_CALL_RE = re.compile(

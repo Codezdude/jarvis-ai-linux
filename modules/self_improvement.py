@@ -178,6 +178,7 @@ def apply_self_improvement(
     new_content: str,
     confirmed: bool = True,
     run_tests: bool = True,
+    require_diff_approval: bool = False,
 ) -> str:
     """
     Safely apply a self-improvement code change:
@@ -187,6 +188,9 @@ def apply_self_improvement(
     4. Runs test suite.
     5. Automatically reverts on failure.
     6. Reloads module on success.
+
+    When ``require_diff_approval`` is True, the pending change is rendered as a
+    unified diff and must be approved through the approval gate before writing.
     """
     if SAFE_MODE and not confirmed:
         return (
@@ -200,6 +204,18 @@ def apply_self_improvement(
         return f"Path error: {e}"
 
     is_python = filepath.endswith(".py")
+
+    # Pre-write gate: require an approved unified diff before touching disk.
+    if require_diff_approval:
+        from modules.approval import approve_file_change
+
+        decision = approve_file_change(
+            safe_path, new_content, actor="self", reason="self_improvement_diff_review"
+        )
+        if not decision.get("approved"):
+            return "Self-improvement denied by diff approval gate; no changes written." + (
+                "\n\nProposed diff:\n" + decision.get("diff", "") if decision.get("diff") else ""
+            )
 
     # Step 1: Pre-validation of syntax before touching disk
     if is_python:

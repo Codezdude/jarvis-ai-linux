@@ -1200,16 +1200,31 @@ class JarvisHUD:
         threading.Thread(target=background_listen, daemon=True).start()
 
     # --- HUD CALLBACKS (approval prompts & budget alerts) ---
-    def _on_ui_prompt(self, payload: Dict[str, Any]) -> bool:
-        """Modal confirmation handler for approval gate UI prompts."""
+    def _format_approval_prompt(self, payload: Dict[str, Any]) -> str:
+        """Build the human-readable approval prompt text, including a diff if present."""
+        actor = payload.get("actor", "unknown")
         action = payload.get("action", "action")
         target = payload.get("target", "")
-        actor = payload.get("actor", "unknown")
         reason = payload.get("reason", "")
+        lines = [
+            f"Actor: {actor}",
+            f"Action: {action}",
+            f"Target: {target}",
+            f"Reason: {reason}",
+        ]
+        diff = payload.get("diff")
+        if diff:
+            excerpt = diff if len(diff) <= 1800 else diff[:1800] + "\n... (diff truncated)"
+            lines.append("\nProposed changes (unified diff):\n" + excerpt)
+        lines.append("\nAllow?")
+        return "\n".join(lines)
+
+    def _on_ui_prompt(self, payload: Dict[str, Any]) -> bool:
+        """Modal confirmation handler for approval gate UI prompts."""
         import tkinter.messagebox as msgbox
         confirmed = msgbox.askyesno(
             "JARVIS Approval Required",
-            f"Actor: {actor}\nAction: {action}\nTarget: {target}\nReason: {reason}\n\nAllow?",
+            self._format_approval_prompt(payload),
         )
         return bool(confirmed)
 

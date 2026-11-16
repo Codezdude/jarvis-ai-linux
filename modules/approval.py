@@ -1,4 +1,5 @@
 import datetime
+import difflib
 import enum
 import fnmatch
 import hashlib
@@ -339,6 +340,7 @@ def check_approval(
     is_protected_file: bool = False,
     signed_token: Optional[str] = None,
     db_path: str = DEFAULT_DB_PATH,
+    diff: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Central policy gate evaluated before executing state-mutating or sensitive actions.
@@ -453,6 +455,7 @@ def check_approval(
         "target": target,
         "reason": reason,
         "reasons": classification["reasons"],
+        "diff": diff,
     }
 
     with _APPROVAL_LOCK:
@@ -509,4 +512,58 @@ def check_approval(
         "risk_tier": risk.value,
         "autonomy_level": int(level),
         "audit_event_id": event_id,
+        "diff": diff,
     }
+
+
+def build_unified_diff(
+    old_content: str,
+    new_content: str,
+    path: str = "",
+    from_label: Optional[str] = None,
+    to_label: Optional[str] = None,
+) -> str:
+    """Return a unified diff between old and new file content (git-style labels)."""
+    diff_lines = difflib.unified_diff(
+        (old_content or "").splitlines(keepends=True),
+        (new_content or "").splitlines(keepends=True),
+        fromfile=from_label or f"a/{path}",
+        tofile=to_label or f"b/{path}",
+    )
+    return "".join(diff_lines)
+
+
+def approve_file_change(
+    path: str,
+    new_content: str,
+    actor: str = "autonomous_worker",
+    reason: str = "",
+    is_protected_file: bool = False,
+    db_path: str = DEFAULT_DB_PATH,
+) -> Dict[str, Any]:
+    """Gate a pending file write behind a unified-diff review.
+
+    Reads the current file, builds a unified diff of the proposed change, and
+    runs it through :func:`check_approval` so the UI can display exactly what
+    will change. The returned dict includes ``approved`` and the rendered
+    ``diff`` (empty string for a brand-new file).
+    """
+    old_content = ""
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            old_content = handle.read()
+    except Exception:
+        old_content = ""
+
+    diff = build_unified_diff(old_content, new_content or "", path=path)
+    result = check_approval(
+        action="file_write",
+        target=path,
+        actor=actor,
+        reason=reason or "unified_diff_review",
+        is_protected_file=is_protected_file,
+        db_path=db_path,
+        diff=diff,
+    )
+    result["diff"] = diff
+    return result

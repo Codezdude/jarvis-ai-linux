@@ -7,3 +7,5 @@
 [CYCLE 4] Target: modules/ui.py | Change: Registered register_ui_prompt_callback() and register_budget_alert_callback() in JarvisHUD.__init__ with handler methods _on_ui_prompt() and _on_budget_alert() | Tests: PASS 37 (baseline 37) | Installs: none | Next: Cycle 5 - add weekly audit/reflections review panel to HUD
 
 [CYCLE 5] Target: modules/ui.py | Change: Added weekly review panel with toggle button, load_review_data() displaying unreviewed failures via get_reflections_for_review(), and mark_reviewed() via mark_reflection_reviewed() | Tests: PASS 37 (baseline 37) | Installs: none | Next: Cycle 6 - add HUD STOP button wiring + request_stop() function, or run_reactive_tick() in scheduler
+
+[CYCLE 6] Target: modules/scheduler.py | Change: Added run_reactive_tick() function that mines failure corpus and checks budget status, callable from scheduler loop or jarvis.py main loop | Tests: PASS 37 (baseline 37) | Installs: none | Next: Cycle 7 - add HUD STOP button with request_stop() function in jarvis.py/scheduler.py

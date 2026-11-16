@@ -131,7 +131,7 @@ class TestProcessDuePosts(InstagramAgentTestBase):
         results = ig.process_due_instagram_posts(
             now_utc=now,
             db_path=self.db,
-            publish_fn=lambda url, cap: "IG123",
+            publish_fn=lambda url, cap, **kw: "IG123",
             url_resolver_fn=lambda p, u: "https://cdn.example.com/x.png",
         )
         self.assertEqual(results, [])
@@ -145,7 +145,7 @@ class TestProcessDuePosts(InstagramAgentTestBase):
 
         calls = {}
 
-        def _publish(url, caption):
+        def _publish(url, caption, **kw):
             calls["url"] = url
             calls["caption"] = caption
             return "IG-MEDIA-999"
@@ -172,7 +172,7 @@ class TestProcessDuePosts(InstagramAgentTestBase):
         now = datetime.now(timezone.utc)
         self._seed(now - timedelta(minutes=5))
 
-        def _boom(url, caption):
+        def _boom(url, caption, **kw):
             raise RuntimeError("Graph API rejected container")
 
         results = ig.process_due_instagram_posts(
@@ -197,7 +197,7 @@ class TestProcessDuePosts(InstagramAgentTestBase):
         results = ig.process_due_instagram_posts(
             now_utc=now,
             db_path=self.db,
-            publish_fn=lambda url, cap: "IG-SHOULD-NOT-HAPPEN",
+            publish_fn=lambda url, cap, **kw: "IG-SHOULD-NOT-HAPPEN",
             url_resolver_fn=lambda p, u: "https://cdn.example.com/x.png",
         )
         self.assertEqual(results, [])
@@ -225,7 +225,7 @@ class TestProcessDuePosts(InstagramAgentTestBase):
         ig.process_due_instagram_posts(
             now_utc=now,
             db_path=self.db,
-            publish_fn=lambda url, cap: "IG1",
+            publish_fn=lambda url, cap, **kw: "IG1",
             url_resolver_fn=_resolver,
         )
         self.assertEqual(seen["existing"], "https://already.example.com/x.png")
@@ -413,6 +413,26 @@ class TestAccessibilityCaption(unittest.TestCase):
             ig.publish_to_instagram_graph("https://cdn/x.png", "cap")
 
         self.assertNotIn("accessibility_caption", captured[0])
+
+    def test_scheduled_post_passes_accessibility_caption(self):
+        import tempfile
+        from pathlib import Path as _P
+        tmp = _P(tempfile.mkdtemp())
+        post = ig.create_and_schedule_post(
+            "acid", image_path="/tmp/x.png",
+            accessibility_caption="alt text here",
+            auto_approve=True, db_path=tmp / "q.db", media_dir=tmp,
+        )
+        self.assertEqual(post["id"], 1)
+        captured = {}
+        def _publish(url, cap, **kw):
+            captured["alt"] = kw.get("accessibility_caption")
+            return "M1"
+        ig.process_due_instagram_posts(
+            now_utc=datetime.now(timezone.utc), db_path=tmp / "q.db",
+            publish_fn=_publish, url_resolver_fn=lambda p, u: "https://cdn/x.png",
+        )
+        self.assertEqual(captured.get("alt"), "alt text here")
 
 
 if __name__ == "__main__":

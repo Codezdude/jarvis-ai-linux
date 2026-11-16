@@ -56,6 +56,8 @@ class JarvisHUD:
         self.history_visible = bool(get_runtime_state("history_visible", False))
         self.review_visible = bool(get_runtime_state("review_visible", False))
         self.fullscreen_mode = str(get_preference("fullscreen_mode", get_runtime_state("fullscreen_mode", "false"))).lower() == "true"
+        self.auto_update_enabled = str(get_preference("auto_update_on_startup", "true")).lower() in ("1", "true", "yes", "on")
+        self.scheduler_enabled = str(get_preference("scheduler_enabled", "true")).lower() in ("1", "true", "yes", "on")
         self.preferred_provider = str(get_preference("preferred_provider", get_runtime_state("preferred_provider", "auto")))
         if self.preferred_provider.lower() in {"auto", "automatic", "default", "none", ""}:
             self.preferred_provider = "auto"
@@ -285,6 +287,39 @@ class JarvisHUD:
         self.provider_menu.pack(side="right")
         self.provider_menu.set("Auto" if self.preferred_provider.lower() == "auto" else self.preferred_provider.title())
 
+        self.auto_update_toggle_btn = ctk.CTkButton(
+            self.settings_frame, text="Auto-Update on Startup: ON", height=28,
+            fg_color="#122738", text_color="#9ef0c4", hover_color="#173b2f",
+            font=("DejaVu Sans", 9, "bold"), corner_radius=8,
+            command=self.toggle_auto_update
+        )
+        self.auto_update_toggle_btn.pack(fill="x", padx=10, pady=(4, 4))
+
+        self.scheduler_toggle_btn = ctk.CTkButton(
+            self.settings_frame, text="Scheduler: ON", height=28,
+            fg_color="#122738", text_color="#9ef0c4", hover_color="#173b2f",
+            font=("DejaVu Sans", 9, "bold"), corner_radius=8,
+            command=self.toggle_scheduler
+        )
+        self.scheduler_toggle_btn.pack(fill="x", padx=10, pady=4)
+
+        action_row = ctk.CTkFrame(self.settings_frame, fg_color="transparent")
+        action_row.pack(fill="x", padx=10, pady=(4, 8))
+
+        ctk.CTkButton(
+            action_row, text="Check Updates", height=28,
+            fg_color="#122738", text_color="#9ed5ff", hover_color="#183a59",
+            font=("DejaVu Sans", 9, "bold"), corner_radius=8,
+            command=self._on_check_updates_click
+        ).pack(side="left", padx=(0, 6))
+
+        ctk.CTkButton(
+            action_row, text="Clear History", height=28,
+            fg_color="#122738", text_color="#ff9d9d", hover_color="#341d1d",
+            font=("DejaVu Sans", 9, "bold"), corner_radius=8,
+            command=self._on_clear_history_click
+        ).pack(side="left")
+
         if self.show_telemetry:
             self.telemetry_toggle_btn.configure(text="Telemetry: ON", text_color="#9ef0c4")
         else:
@@ -299,6 +334,16 @@ class JarvisHUD:
             self.fullscreen_toggle_btn.configure(text="Fullscreen: ON", text_color="#9ef0c4")
             self._normal_geometry = self.root.geometry()
             self.root.geometry(f"{self.root.winfo_screenwidth()}x{self.root.winfo_screenheight()}+0+0")
+
+        if self.auto_update_enabled:
+            self.auto_update_toggle_btn.configure(text="Auto-Update on Startup: ON", text_color="#9ef0c4")
+        else:
+            self.auto_update_toggle_btn.configure(text="Auto-Update on Startup: OFF", text_color="#ff9d9d")
+
+        if self.scheduler_enabled:
+            self.scheduler_toggle_btn.configure(text="Scheduler: ON", text_color="#9ef0c4")
+        else:
+            self.scheduler_toggle_btn.configure(text="Scheduler: OFF", text_color="#ff9d9d")
 
         # --- HISTORY PANEL ---
         self.history_frame = ctk.CTkFrame(
@@ -505,6 +550,49 @@ class JarvisHUD:
             if self._normal_geometry:
                 self.root.geometry(self._normal_geometry)
             self.fullscreen_toggle_btn.configure(text="Fullscreen: OFF", text_color="#00f3ff")
+
+    def toggle_auto_update(self):
+        """Toggle automatic update-on-startup preference."""
+        self.auto_update_enabled = not self.auto_update_enabled
+        save_preference("auto_update_on_startup", self.auto_update_enabled)
+        if self.auto_update_enabled:
+            self.auto_update_toggle_btn.configure(text="Auto-Update on Startup: ON", text_color="#9ef0c4")
+        else:
+            self.auto_update_toggle_btn.configure(text="Auto-Update on Startup: OFF", text_color="#ff9d9d")
+
+    def toggle_scheduler(self):
+        """Toggle the background scheduler (morning briefings)."""
+        self.scheduler_enabled = not self.scheduler_enabled
+        save_preference("scheduler_enabled", self.scheduler_enabled)
+        if self.scheduler_enabled:
+            self.scheduler_toggle_btn.configure(text="Scheduler: ON", text_color="#9ef0c4")
+        else:
+            self.scheduler_toggle_btn.configure(text="Scheduler: OFF", text_color="#ff9d9d")
+
+    def _on_check_updates_click(self):
+        """Trigger a manual update check in a background thread."""
+        def _do_update():
+            try:
+                from modules.self_update import self_update_system
+                result = self_update_system(pull_git=True, restart_after=False)
+                log_info(f"Manual update result:\n{result}")
+                self.update_ui("UPDATE CHECKED", "idle", result)
+            except Exception as e:
+                log_error(f"Manual update failed: {e}")
+                self.update_ui("UPDATE ERROR", "idle", f"Update failed: {e}")
+
+        threading.Thread(target=_do_update, daemon=True).start()
+        self.update_ui("CHECKING UPDATES", "thinking", "Checking for updates from Git...")
+
+    def _on_clear_history_click(self):
+        """Clear all conversation history and reset to default system prompt."""
+        try:
+            from modules.ai import clear_conversation_history
+            clear_conversation_history()
+            self.update_ui("HISTORY CLEARED", "idle", "Conversation history has been cleared.")
+        except Exception as e:
+            log_error(f"Failed to clear history: {e}")
+            self.update_ui("ERROR", "idle", f"Failed to clear history: {e}")
 
     def set_preferred_provider_for_ui(self, selected_value: str):
         value = (selected_value or "Auto").strip()

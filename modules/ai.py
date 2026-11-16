@@ -171,6 +171,43 @@ def _safe_tool_name(fn) -> str:
     """
     return getattr(fn, "__name__", getattr(getattr(fn, "func", None), "__name__", "unknown_tool"))
 
+
+def _build_gemini_tools(schemas: list[dict]):
+    """Convert OpenAI-style tool schemas into Gemini ``types.Tool`` objects.
+
+    Each schema dict must have ``function.name``, ``function.description``, and
+    ``function.parameters``.  Returns a list of ``genai.types.Tool`` instances
+    with proper ``function_declarations``, or an empty list if the Gemini SDK
+    types are unavailable.
+    """
+    if genai is None or not hasattr(genai, "types"):
+        return []
+
+    declarations = []
+    for schema in schemas:
+        fn = schema.get("function", schema)
+        name = fn.get("name", "unknown_tool")
+        description = fn.get("description", "")
+        parameters = fn.get("parameters", {"type": "object", "properties": {}})
+        try:
+            fd = genai.types.FunctionDeclaration(
+                name=name,
+                description=description,
+                parameters=parameters,
+            )
+            declarations.append(fd)
+        except Exception as e:
+            log_error(f"Failed to build Gemini FunctionDeclaration for {name}: {e}")
+
+    if not declarations:
+        return []
+
+    try:
+        return [genai.types.Tool(function_declarations=declarations)]
+    except Exception as e:
+        log_error(f"Failed to build Gemini Tool wrapper: {e}")
+        return []
+
 # Define available tools that the models can execute autonomously
 AVAILABLE_TOOLS = {
     "get_system_diagnostics": get_system_diagnostics,
@@ -882,6 +919,15 @@ def _replace_history(new_history: list[dict]) -> None:
         CONVERSATION_HISTORY.clear()
         CONVERSATION_HISTORY.extend(new_history)
         _save_session_history_to_disk()
+
+
+def clear_conversation_history() -> None:
+    """Clear all conversation history and reset to the default system prompt."""
+    default_system = {
+        "role": "system",
+        "content": "You are J.A.R.V.I.S., a highly advanced autonomous AI assistant.",
+    }
+    _replace_history([default_system])
 
 
 def _clean_message_text(message: dict) -> str:
@@ -1669,6 +1715,15 @@ def _mark_provider_failed(provider: str) -> None:
 def _query_needs_tools(query: str) -> bool:
     """Only attach the 35 JSON tool schemas when the request likely needs an external action."""
     q = (query or "").lower()
+    # Pure greetings should never trigger tool mode
+    q_clean = q.strip().rstrip("!.,?")
+    greeting_patterns = {
+        "hi", "hello", "hey", "howdy", "yo", "sup",
+        "good morning", "good evening", "good afternoon",
+        "hi there", "hello there", "hey there",
+    }
+    if q_clean in greeting_patterns:
+        return False
     action_triggers = (
         "file", "read", "write", "edit", "save", "folder", "directory", "search",
         "find", "code", "bug", "fix", "test", "syntax", "log", "update", "upgrade",
@@ -1871,6 +1926,8 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None) ->
         try:
             if provider == "groq":
                 print("[ROUTER] Attempting Groq Cloud (5-step agent loop)...")
+                called_tools: set[tuple[str, str]] = set()
+                duplicate_detected = False
                 for step in range(5):
                     response = groq_client.chat.completions.create(
                         model=CLOUD_MODEL_GROQ,
@@ -1892,17 +1949,25 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None) ->
                     for tool_call in message.tool_calls:
                         func_name = tool_call.function.name
                         func_args = json.loads(tool_call.function.arguments or "{}")
+                        call_key = (func_name, json.dumps(func_args, sort_keys=True))
+                        if call_key in called_tools:
+                            print(f"[GROQ AGENT] Duplicate tool call detected: {func_name}. Breaking loop.")
+                            duplicate_detected = True
+                            break
+                        called_tools.add(call_key)
                         print(f"[GROQ AGENT Step {step + 1}/5] Tool: {func_name}")
 
                         tool_result = _dispatch_tool(func_name, func_args)
                         decision_trace.tools_invoked.append(func_name)
                         tool_messages.append({"role": "tool", "content": str(tool_result), "tool_call_id": tool_call.id})
 
+                    if duplicate_detected:
+                        break
                     with CONVERSATION_LOCK:
                         CONVERSATION_HISTORY.extend(tool_messages)
                         history = list(CONVERSATION_HISTORY)
 
-                # Final synthesis after 5 tool steps
+                # Final synthesis after 5 tool steps or duplicate break
                 final_response = groq_client.chat.completions.create(
                     model=CLOUD_MODEL_GROQ,
                     messages=history,
@@ -1925,6 +1990,8 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None) ->
 
             if provider == "kilo":
                 print("[ROUTER] Attempting Kilo AI Gateway...")
+                called_tools: set[tuple[str, str]] = set()
+                duplicate_detected = False
                 for step in range(5):
                     reply = call_kilo_gateway(history)
                     if not reply:
@@ -1937,10 +2004,18 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None) ->
                         return _finalize_ai_turn(decision_trace, reply, "success")
                     _append_history({"role": "assistant", "content": reply})
                     for tool_name, func_args in xml_calls:
+                        call_key = (tool_name, json.dumps(func_args, sort_keys=True))
+                        if call_key in called_tools:
+                            print(f"[KILO AGENT] Duplicate tool call detected: {tool_name}. Breaking loop.")
+                            duplicate_detected = True
+                            break
+                        called_tools.add(call_key)
                         print(f"[KILO AGENT Step {step + 1}/5] Tool: {tool_name}")
                         tool_result = _dispatch_tool(tool_name, func_args)
                         decision_trace.tools_invoked.append(tool_name)
                         _append_history({"role": "tool", "content": str(tool_result), "name": tool_name})
+                    if duplicate_detected:
+                        break
                     history = _snapshot_history()
                 reply = call_kilo_gateway(history) if history else ""
                 if reply:
@@ -1962,8 +2037,9 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None) ->
                 print("[ROUTER] Attempting Google Gemini Cloud...")
                 gemini_prompt = "\n".join([f"{m['role']}: {m['content']}" for m in history if isinstance(m.get('content'), str)])
 
-                tool_callables = list(AVAILABLE_TOOLS.values())
-                for fn in tool_callables:
+                all_schemas = TOOL_SCHEMAS + get_all_dynamic_tool_schemas()
+                gemini_tools = _build_gemini_tools(all_schemas)
+                for fn in AVAILABLE_TOOLS.values():
                     if not getattr(fn, "__name__", None):
                         safe = _safe_tool_name(fn)
                         if safe == "unknown_tool":
@@ -1971,7 +2047,7 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None) ->
                 config = None
                 if hasattr(genai, "types") and hasattr(genai.types, "GenerateContentConfig"):
                     config = genai.types.GenerateContentConfig(
-                        tools=tool_callables,
+                        tools=gemini_tools,
                         system_instruction=history[0]["content"] if history else None,
                     )
 

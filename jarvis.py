@@ -186,7 +186,7 @@ def check_auto_update() -> None:
     import subprocess
     from modules.memory import get_preference
 
-    enabled, _ = get_preference("auto_update_on_startup", "true")
+    enabled = get_preference("auto_update_on_startup", "true")
     if str(enabled).strip().lower() not in ("1", "true", "yes", "on"):
         log_info("Auto-update on startup is disabled by user preference.")
         return

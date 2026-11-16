@@ -61,7 +61,7 @@ class JarvisScheduler:
     from modules.memory import get_preference
     while not self._stop_event.is_set():
       # Skip briefing if scheduler is disabled by user preference
-      enabled, _ = get_preference("scheduler_enabled", "true")
+      enabled = get_preference("scheduler_enabled", "true")
       if str(enabled).strip().lower() in ("0", "false", "no", "off"):
         time.sleep(30)
         continue

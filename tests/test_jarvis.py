@@ -82,7 +82,7 @@ class TestJarvisProcessCommand(unittest.TestCase):
             pass
 
         jarvis.process_command("explain quantum physics", fake_callback)
-        self.mock_ai.assert_called_once_with("explain quantum physics")
+        self.mock_ai.assert_called_once_with("explain quantum physics", session_id="default")
 
     def test_process_command_streams_reply_chunks(self):
         jarvis = self._import_jarvis()

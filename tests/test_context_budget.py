@@ -62,11 +62,12 @@ class TestContextBudgetDB(unittest.TestCase):
 
     def test_enforce_context_budget_triggers_compaction(self):
         from modules.memory_consolidation import enforce_context_budget
-        # 10 long messages => ~ (10 * 50 chars / 4) ~ 125 tokens; force a tiny budget.
+        # 10 long messages => tokens exceed a tiny budget; force compaction.
         self._seed(10, content_len=200)
-        compacted = enforce_context_budget(
-            session_id="default", max_context_tokens=200, db_path=self.db_path
-        )
+        with patch("modules.ai.ask_local_brain", return_value="SUMMARY"):
+            compacted = enforce_context_budget(
+                session_id="default", max_context_tokens=200, db_path=self.db_path
+            )
         self.assertTrue(compacted)
 
     def test_enforce_context_budget_noop_when_small(self):

@@ -49,18 +49,18 @@
   },
   {
     "role": "user",
-    "content": "hello world"
+    "content": "hi"
   },
   {
     "role": "assistant",
-    "content": "Local response from Ollama."
+    "content": "Hello, Sir. How can I assist you today?"
   },
   {
     "role": "user",
-    "content": "hello world"
+    "content": "can you improve yourself"
   },
   {
     "role": "assistant",
-    "content": "Fallback from Ollama."
+    "content": "<dots_function_call>\n<list_directory>\n</list>\n</dots_function_call>"
   }
 ]

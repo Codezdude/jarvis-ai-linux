@@ -281,6 +281,14 @@ class JarvisHUD:
         )
         copy_code_btn.grid(row=0, column=3, padx=(6, 0))
 
+        edit_btn = ctk.CTkButton(
+            input_frame, text="\u270e", width=44, height=38,
+            fg_color="#122738", text_color="#ffd700", hover_color="#3d3200",
+            font=("DejaVu Sans", 12, "bold"), corner_radius=10,
+            command=self._begin_edit_last_user_message
+        )
+        edit_btn.grid(row=0, column=4, padx=(6, 0))
+
         self.root.bind("<Control-Shift-C>", lambda e: self._copy_last_code_block())
 
         # --- SETTINGS PANEL ---
@@ -856,6 +864,14 @@ class JarvisHUD:
                 self._begin_edit_message(item["id"], item["content"])
                 break
         return "break"
+
+    def _begin_edit_last_user_message(self):
+        """✎ button: load the most recent user message into the input for editing."""
+        for item in reversed(self._rendered_messages):
+            if item.get("role") == "user":
+                self._begin_edit_message(item["id"], item["content"])
+                return
+        self.update_ui("NO MESSAGE", "idle", "No user message to edit yet.")
 
     def _new_chat(self):
         """Start a fresh timestamped session and reset the view."""

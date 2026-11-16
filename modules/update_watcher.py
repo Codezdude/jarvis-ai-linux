@@ -170,10 +170,11 @@ def _invoke_approval_hook(prompt_msg: str, info: dict) -> bool:
     # Fallback A: the real approval gate (check_approval -> dict with "approved").
     check_approval = getattr(approval, "check_approval", None)
     if callable(check_approval):
+        changed = info.get("changed_files") or ["code/config"]
         try:
             result = check_approval(
                 action="restart_jarvis",
-                target=str(info.get("changed_files", ["code/config"])[0]),
+                target=str(changed[0]),
                 actor="system",
                 source="self",
                 reason=prompt_msg,

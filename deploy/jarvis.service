@@ -1,0 +1,22 @@
+[Unit]
+Description=J.A.R.V.I.S. Autonomous Desktop HUD
+# The HUD is a GUI app (customtkinter); tie it to the user's graphical session.
+After=graphical-session.target network-online.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+# Adjust these two paths if the project is not at ~/jarvis_project.
+WorkingDirectory=%h/jarvis_project
+ExecStart=%h/jarvis_project/venv/bin/python %h/jarvis_project/jarvis.py
+# Headless alternative (no window): append --cli to ExecStart above.
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+Environment=PYTHONUNBUFFERED=1
+# GUI apps launched outside a terminal need the display + Xauthority.
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=%h/.Xauthority
+
+[Install]
+WantedBy=graphical-session.target

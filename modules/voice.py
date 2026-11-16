@@ -1,6 +1,7 @@
 from modules.memory import get_runtime_state, set_runtime_state
 """Interruptible TTS for JARVIS: Kokoro with pyttsx3 fallback, speech interrupt, and echo suppression."""
 
+import gc
 import re
 import threading
 
@@ -17,6 +18,29 @@ VOICE_ENABLED = True
 
 _kokoro_pipeline = None
 _pyttsx3_engine = None
+
+_VOICE_STATE_CALLBACKS = []
+
+
+def register_voice_state_callback(cb) -> None:
+    """Register a listener callback invoked with (enabled: bool) whenever voice toggles."""
+    if cb not in _VOICE_STATE_CALLBACKS:
+        _VOICE_STATE_CALLBACKS.append(cb)
+
+
+def unload_voice_engine() -> None:
+    """Stop active speech and free the Kokoro PyTorch pipeline from RAM/CPU."""
+    global _kokoro_pipeline
+    stop_speaking()
+    if _kokoro_pipeline not in (None, False):
+        _kokoro_pipeline = None
+        gc.collect()
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
 
 
 def _get_kokoro():
@@ -52,6 +76,13 @@ def set_voice_enabled(enabled: bool) -> bool:
     global VOICE_ENABLED
     VOICE_ENABLED = bool(enabled)
     set_runtime_state("voice_enabled", VOICE_ENABLED)
+    if not bool(enabled):
+        unload_voice_engine()
+    for _cb in list(_VOICE_STATE_CALLBACKS):
+        try:
+            _cb(bool(enabled))
+        except Exception:
+            pass
     return VOICE_ENABLED
 
 

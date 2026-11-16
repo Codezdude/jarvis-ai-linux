@@ -1,7 +1,7 @@
 """Regression tests for XML-style tool call parsing in OpenAI-compatible providers (Kilo)."""
 
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from modules.ai import _parse_xml_tool_calls, ask_local_brain_with_tools
 

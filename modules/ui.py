@@ -11,6 +11,7 @@ import psutil
 from modules.logger import log_error, log_info
 from modules.approval import register_ui_prompt_callback
 from modules.budget import register_budget_alert_callback
+from modules.reflections import get_reflections_for_review, mark_reflection_reviewed
 from modules.voice import speak, set_voice_enabled, get_voice_enabled
 from modules.memory import (
     get_preference,
@@ -51,6 +52,7 @@ class JarvisHUD:
         set_voice_enabled(self.voice_enabled)
         self.settings_visible = bool(get_runtime_state("settings_visible", False))
         self.history_visible = bool(get_runtime_state("history_visible", False))
+        self.review_visible = bool(get_runtime_state("review_visible", False))
         self.fullscreen_mode = str(get_preference("fullscreen_mode", get_runtime_state("fullscreen_mode", "false"))).lower() == "true"
         self.preferred_provider = str(get_preference("preferred_provider", get_runtime_state("preferred_provider", "auto")))
         if self.preferred_provider.lower() in {"auto", "automatic", "default", "none", ""}:
@@ -120,6 +122,13 @@ class JarvisHUD:
             command=self.toggle_history_panel
         )
         history_btn.pack(side="right", padx=(0, 6))
+
+        review_btn = ctk.CTkButton(
+            actions, text="\u2699\ufe0f", width=30, height=28, fg_color="transparent",
+            text_color="#ffd700", hover_color="#3d3200", font=("DejaVu Sans", 11, "bold"),
+            command=self.toggle_review_panel
+        )
+        review_btn.pack(side="right", padx=(0, 6))
 
         hide_btn = ctk.CTkButton(
             actions, text="\u2014", width=30, height=28, fg_color="transparent",
@@ -295,6 +304,26 @@ class JarvisHUD:
             command=self.load_history_data
         ).pack(fill="x", padx=8, pady=(4, 10))
 
+        # --- WEEKLY REVIEW PANEL ---
+        self.review_frame = ctk.CTkFrame(
+            self.root, fg_color="#0d1d2a", corner_radius=14, border_width=1, border_color="#ffd700"
+        )
+        ctk.CTkLabel(self.review_frame, text="WEEKLY REVIEW", text_color="#ffd700", font=("DejaVu Sans", 10, "bold")).pack(pady=(10, 4))
+
+        self.review_box = ctk.CTkTextbox(
+            self.review_frame, height=120, fg_color="#071018", text_color="#dbeeff",
+            font=("DejaVu Sans", 9), border_spacing=8, activate_scrollbars=True
+        )
+        self.review_box.pack(fill="both", expand=True, padx=8, pady=4)
+        self.review_box.configure(state="disabled")
+
+        ctk.CTkButton(
+            self.review_frame, text="Refresh", height=28,
+            fg_color="#122738", text_color="#ffd700", hover_color="#3d3200",
+            font=("DejaVu Sans", 9, "bold"), corner_radius=8,
+            command=self.load_review_data
+        ).pack(fill="x", padx=8, pady=(4, 10))
+
         self.refresh_provider_status()
         self.animate_rings()
         self.process_ui_queue()
@@ -314,6 +343,9 @@ class JarvisHUD:
         if self.history_visible:
             self.history_frame.grid_remove()
             self.history_visible = False
+        if self.review_visible:
+            self.review_frame.grid_remove()
+            self.review_visible = False
         if self.settings_visible:
             self.settings_frame.grid_remove()
             self.settings_visible = False
@@ -326,6 +358,9 @@ class JarvisHUD:
         if self.settings_visible:
             self.settings_frame.grid_remove()
             self.settings_visible = False
+        if self.review_visible:
+            self.review_frame.grid_remove()
+            self.review_visible = False
         if self.history_visible:
             self.history_frame.grid_remove()
             self.history_visible = False
@@ -334,6 +369,53 @@ class JarvisHUD:
             self.history_visible = True
             self.load_history_data()
         set_runtime_state("history_visible", self.history_visible)
+
+    def toggle_review_panel(self):
+        if self.settings_visible:
+            self.settings_frame.grid_remove()
+            self.settings_visible = False
+        if self.history_visible:
+            self.history_frame.grid_remove()
+            self.history_visible = False
+        if self.review_visible:
+            self.review_frame.grid_remove()
+            self.review_visible = False
+        else:
+            self.review_frame.grid(row=2, column=0, sticky="ew", padx=12, pady=(0, 8))
+            self.review_visible = True
+            self.load_review_data()
+        set_runtime_state("review_visible", self.review_visible)
+
+    def load_review_data(self):
+        reflections = get_reflections_for_review(
+            unreviewed_only=True, failures_only=True, limit=20
+        )
+        self.review_box.configure(state="normal")
+        self.review_box.delete("0.0", "end")
+        if not reflections:
+            self.review_box.insert("0.0", "No unreviewed failures in the corpus.")
+        else:
+            for r in reflections:
+                fid = r.get("id", "?")
+                mode = r.get("failure_mode", "unknown")
+                score = r.get("overall_score", 0.0)
+                cause = r.get("root_cause", "")
+                remedy = r.get("proposed_remediation", "none")
+                self.review_box.insert(
+                    "end",
+                    f"[#{fid}] mode={mode} score={score}\n"
+                    f"  cause: {cause}\n"
+                    f"  remediation: {remedy}\n"
+                    f"  [Mark Reviewed] via mark_reflection_reviewed({fid})\n"
+                    + "\u2500"*38 + "\n",
+                )
+        self.review_box.configure(state="disabled")
+
+    def mark_reviewed(self, reflection_id: int):
+        ok = mark_reflection_reviewed(int(reflection_id), actor="user")
+        if ok:
+            self.load_review_data()
+            self.update_ui("REVIEW UPDATED", "idle", f"Reflection {reflection_id} marked reviewed.")
 
     def load_history_data(self):
         records = get_recent_history(limit=15)

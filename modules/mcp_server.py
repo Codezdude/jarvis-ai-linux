@@ -18,6 +18,8 @@ from modules.tools import (
     create_promotional_flyer,
     edit_file_section,
     generate_brand_concepts,
+    generate_image,
+    web_fetch_and_learn,
     generate_social_post_brief,
     get_current_time,
     get_system_diagnostics,

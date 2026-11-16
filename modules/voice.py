@@ -1,4 +1,3 @@
-from modules.memory import get_runtime_state, set_runtime_state
 """Interruptible TTS for JARVIS: Kokoro with pyttsx3 fallback, speech interrupt, and echo suppression."""
 
 import gc
@@ -126,6 +125,8 @@ def _clean_for_speech(text: str) -> str:
 
 def speak(text: str, hud_callback=None) -> None:
     """Speak text aloud via Kokoro TTS (interruptible) with automatic pyttsx3 fallback."""
+    if not get_voice_enabled():
+        return
     spoken = _clean_for_speech(str(text or ""))
     if not spoken:
         return

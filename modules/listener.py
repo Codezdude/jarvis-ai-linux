@@ -106,3 +106,21 @@ class ContinuousVoiceListener:
             except Exception as e:
                 log_error(f"Voice listener loop warning: {e}")
                 time.sleep(1.0)
+
+
+def listen_to_user(hud_callback=None, timeout: float = 5.0, phrase_time_limit: float = 12.0) -> str:
+    """Single-utterance push-to-talk capture for the HUD microphone button."""
+    recognizer = sr.Recognizer()
+    recognizer.dynamic_energy_threshold = True
+    try:
+        if hud_callback:
+            hud_callback("LISTENING...", "listening", "Speak now, Sir...")
+        with sr.Microphone() as source:
+            recognizer.adjust_for_ambient_noise(source, duration=0.5)
+            audio = recognizer.listen(source, timeout=timeout, phrase_time_limit=phrase_time_limit)
+        if hud_callback:
+            hud_callback("TRANSCRIBING...", "thinking", "Processing voice input...")
+        return recognizer.recognize_google(audio).strip()
+    except Exception as e:
+        log_error(f"Push-to-talk capture error: {e}")
+        return ""

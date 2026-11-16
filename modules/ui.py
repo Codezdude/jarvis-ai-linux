@@ -3,10 +3,10 @@ import math
 import queue
 import threading
 import time
+import customtkinter
 import customtkinter as ctk
 import psutil
 
-from modules.ai import get_active_provider
 from modules.logger import log_error, log_info
 from modules.voice import speak, set_voice_enabled, get_voice_enabled
 from modules.memory import (

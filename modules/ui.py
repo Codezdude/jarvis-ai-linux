@@ -44,6 +44,8 @@ class JarvisHUD:
         self.state = str(get_runtime_state("ui_state", "idle"))
         self.angle = 0
         self.ui_queue = queue.Queue()
+        self._chunk_queue = queue.Queue()
+        self._live_assistant_buffer = None
         self._last_telemetry_update = 0.0
         self._animation_job = None
         self._queue_job = None
@@ -972,8 +974,71 @@ class JarvisHUD:
             delay = 60 if state in {"thinking", "speaking"} else 120
             self._queue_job = self.root.after(delay, self.process_ui_queue)
 
+    # --- LIVE STREAMING (progressive assistant bubble) ---
+    def push_chunk(self, delta: str):
+        """Thread-safe: enqueue a chunk of assistant text for live rendering."""
+        if not delta:
+            return
+        self._chunk_queue.put(delta)
+        if self._queue_job is None:
+            self._queue_job = self.root.after(40, self.process_ui_queue)
+
+    def _drain_chunks(self):
+        """Append any queued stream chunks to the live assistant bubble."""
+        while True:
+            try:
+                delta = self._chunk_queue.get_nowait()
+            except queue.Empty:
+                break
+            self._append_live_text(delta)
+
+    def _append_live_text(self, delta: str):
+        """Append text to the in-progress assistant bubble, creating it if needed."""
+        self.response_box.configure(state="normal")
+        if self._live_assistant_buffer is None:
+            self.response_box.insert("end", "JARVIS: ")
+            self._live_assistant_buffer = ""
+        self.response_box.insert("end", delta)
+        self._live_assistant_buffer += delta
+        self.response_box.see("end")
+        self.response_box.configure(state="disabled")
+
+    def _close_live_assistant(self, final_text: str = None):
+        """Finalize the live assistant bubble with a separator and persist it."""
+        if self._live_assistant_buffer is None:
+            return
+        if final_text and not self._live_assistant_buffer.strip():
+            self.response_box.configure(state="normal")
+            self.response_box.insert("end", final_text)
+            self._live_assistant_buffer = final_text
+            self.response_box.configure(state="disabled")
+        self.response_box.configure(state="normal")
+        self.response_box.insert("end", "\n" + "\u2500" * 30 + "\n")
+        self.response_box.see("end")
+        self.response_box.configure(state="disabled")
+        content = self._live_assistant_buffer
+        self._live_assistant_buffer = None
+        self._rendered_messages.append(
+            {"id": None, "role": "assistant", "content": content, "widget": None}
+        )
+        sess = self._current_session_id
+        try:
+            save_chat_message("assistant", content, session_id=sess)
+        except Exception:
+            pass
+        try:
+            from modules.memory_consolidation import compact_session_if_needed
+
+            threading.Thread(
+                target=lambda s=sess: compact_session_if_needed(session_id=s),
+                daemon=True,
+            ).start()
+        except Exception:
+            pass
+
     def process_ui_queue(self):
         self._queue_job = None
+        self._drain_chunks()
         while not self.ui_queue.empty():
             status_text, state, reply_text = self.ui_queue.get()
             self.status_var.set(status_text)
@@ -984,6 +1049,9 @@ class JarvisHUD:
                 # "> query" echoes are user bubbles; everything else is an assistant bubble
                 if reply_text.startswith("> "):
                     self._append_chat_bubble("user", reply_text[2:])
+                elif self._live_assistant_buffer is not None:
+                    # A live stream produced this reply; close the bubble instead of duplicating
+                    self._close_live_assistant(reply_text)
                 else:
                     self._append_chat_bubble("assistant", reply_text)
                     # Persist assistant reply to the active session + compact if needed
@@ -1001,7 +1069,7 @@ class JarvisHUD:
                         ).start()
                     except Exception:
                         pass
-        if self.visible and not self.ui_queue.empty():
+        if self.visible and (not self.ui_queue.empty() or not self._chunk_queue.empty()):
             self._queue_job = self.root.after(80, self.process_ui_queue)
 
     def on_submit_text(self, event=None):
@@ -1038,7 +1106,9 @@ class JarvisHUD:
 
         if self.command_callback:
             threading.Thread(
-                target=self.command_callback, args=(query, self.update_ui), daemon=True
+                target=self.command_callback,
+                args=(query, self.update_ui, self.push_chunk),
+                daemon=True,
             ).start()
 
     def on_mic_click(self):
@@ -1049,7 +1119,7 @@ class JarvisHUD:
                 if query:
                     self.update_ui("PROCESSING", "thinking", f"> {query}")
                     if self.command_callback:
-                        self.command_callback(query, self.update_ui)
+                        self.command_callback(query, self.update_ui, self.push_chunk)
                 else:
                     self.update_ui("STANDBY // LISTENING", "idle", "Audio input unclear, Sir.")
             except Exception as e:

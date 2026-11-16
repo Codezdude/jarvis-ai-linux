@@ -48,7 +48,30 @@ def request_stop() -> None:
     log_info("JARVIS STOP complete.")
 
 
-def process_command(query: str, hud_callback=None):
+def _stream_reply_chunks(text: str, chunk_callback, words_per_chunk: int = 3, delay: float = 0.008):
+    """Reveal a finished reply progressively so the HUD can render it live.
+
+    Splits ``text`` into small word groups and invokes ``chunk_callback`` for
+    each, preserving all whitespace so the concatenation equals the original.
+    """
+    if not text or chunk_callback is None:
+        return
+    tokens = text.split(" ")
+    for i in range(0, len(tokens), words_per_chunk):
+        group = tokens[i:i + words_per_chunk]
+        chunk = " ".join(group)
+        # Re-attach the trailing space that split() consumed (except for the last chunk)
+        if i + words_per_chunk < len(tokens):
+            chunk += " "
+        try:
+            chunk_callback(chunk)
+        except Exception:
+            return
+        if delay:
+            time.sleep(delay)
+
+
+def process_command(query: str, hud_callback=None, chunk_callback=None):
     """Autonomous agent router leveraging multi-step LLM tool-calling and memory integration."""
     global hud_instance, scheduler
     q_lower = query.lower().strip()
@@ -121,6 +144,7 @@ def process_command(query: str, hud_callback=None):
         # 4. Autonomous 5-Step Agent Loop
         else:
             response_text = ask_local_brain_with_tools(query)
+            _stream_reply_chunks(response_text, chunk_callback)
             if speak_allowed:
                 speak(response_text, hud_callback)
 

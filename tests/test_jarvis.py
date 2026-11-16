@@ -84,6 +84,28 @@ class TestJarvisProcessCommand(unittest.TestCase):
         jarvis.process_command("explain quantum physics", fake_callback)
         self.mock_ai.assert_called_once_with("explain quantum physics")
 
+    def test_process_command_streams_reply_chunks(self):
+        jarvis = self._import_jarvis()
+        self.mock_ai.return_value = "One two three four five."
+
+        chunks = []
+        jarvis.process_command("stream please", None, chunk_callback=chunks.append)
+        # Concatenation of streamed chunks must reconstruct the full reply exactly
+        self.assertEqual("".join(chunks), "One two three four five.")
+        self.assertGreater(len(chunks), 1)
+
+    def test_stream_reply_chunks_preserves_whitespace(self):
+        jarvis = self._import_jarvis()
+        text = "Hello  world\tagain\nnewline"
+        chunks = []
+        jarvis._stream_reply_chunks(text, chunks.append, words_per_chunk=2, delay=0)
+        self.assertEqual("".join(chunks), text)
+
+    def test_stream_reply_chunks_noop_without_callback(self):
+        jarvis = self._import_jarvis()
+        # Must not raise when no callback is supplied
+        jarvis._stream_reply_chunks("some text", None)
+
     def test_process_command_error_handling(self):
         jarvis = self._import_jarvis()
         self.mock_ai.side_effect = Exception("AI failure")

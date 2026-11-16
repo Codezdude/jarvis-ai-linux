@@ -1,72 +1,68 @@
 [
   {
     "role": "assistant",
-    "content": "<dots_function_call>\n<list_directory\">\n</invoke>\n</dots_function_call>"
-  },
-  {
-    "role": "tool",
-    "content": ".backups\n.env\n.env.example\n.git\n.gitignore\n.mypy_cache\n.ruff_cache\n.vscode\nModelfile\nREADME.md\n__pycache__\nassests\nassets\nauto_push.sh\nauto_sync.ps1\nconfig\ndata\ndocs\nexperiments\ngenerated_code\ngit_sync.log\njarvis.py\njarvis_memory.db\nlogs\nmemory\nmemory.md\nmodules\nproject_bundle.txt\npyproject.toml\nrequirements.txt\nrun_jarvis.bat\ntests\nto do.txt\nunittest_output.txt\nvenv\nworkspace_growth.md",
-    "name": "list_directory"
-  },
-  {
-    "role": "assistant",
-    "content": "<dots_function_call>\n<list_directory\">\n</invoke>\n</dots_function_call>"
-  },
-  {
-    "role": "tool",
-    "content": ".backups\n.env\n.env.example\n.git\n.gitignore\n.mypy_cache\n.ruff_cache\n.vscode\nModelfile\nREADME.md\n__pycache__\nassests\nassets\nauto_push.sh\nauto_sync.ps1\nconfig\ndata\ndocs\nexperiments\ngenerated_code\ngit_sync.log\njarvis.py\njarvis_memory.db\nlogs\nmemory\nmemory.md\nmodules\nproject_bundle.txt\npyproject.toml\nrequirements.txt\nrun_jarvis.bat\ntests\nto do.txt\nunittest_output.txt\nvenv\nworkspace_growth.md",
-    "name": "list_directory"
-  },
-  {
-    "role": "assistant",
-    "content": "<dots_function_call>\n<list_directory\">\n</invoke>\n</dots_function_call>"
+    "content": "Done."
   },
   {
     "role": "user",
-    "content": "hi"
+    "content": "list files"
   },
   {
     "role": "assistant",
-    "content": "<dots_function_call>\n<list_directory\">\n</invoke>\n</dots_function_call>"
+    "content": "<dots_function_call><list_directory></list></dots_function_call>"
   },
   {
     "role": "tool",
-    "content": ".backups\n.env\n.env.example\n.git\n.gitignore\n.mypy_cache\n.ruff_cache\n.vscode\nModelfile\nREADME.md\n__pycache__\nassests\nassets\nauto_push.sh\nauto_sync.ps1\nconfig\ndata\ndocs\nexperiments\ngenerated_code\ngit_sync.log\njarvis.py\njarvis_memory.db\nlogs\nmemory\nmemory.md\nmodules\nproject_bundle.txt\npyproject.toml\nrequirements.txt\nrun_jarvis.bat\ntests\nto do.txt\nunittest_output.txt\nvenv\nworkspace_growth.md",
+    "content": "file1.txt",
     "name": "list_directory"
   },
   {
     "role": "assistant",
-    "content": "Hello, Sir. How can I assist you today?"
+    "content": "<dots_function_call><list_directory></list></dots_function_call>"
+  },
+  {
+    "role": "assistant",
+    "content": "Done listing."
   },
   {
     "role": "user",
-    "content": "can you  update your self"
+    "content": "hello"
   },
   {
     "role": "assistant",
-    "content": "Let me explore the project directory to understand what we're working with.\n<dots_function_call>\n<list_directory\">\n</invoke>\n</dots_function_call>"
+    "content": "Just a normal response."
+  },
+  {
+    "role": "user",
+    "content": "list the current directory"
+  },
+  {
+    "role": "assistant",
+    "content": "Let me check. <dots_function_call><list_directory></list></dots_function_call>"
   },
   {
     "role": "tool",
-    "content": ".backups\n.env\n.env.example\n.git\n.gitignore\n.mypy_cache\n.ruff_cache\n.vscode\nModelfile\nREADME.md\n__pycache__\nassests\nassets\nauto_push.sh\nauto_sync.ps1\nconfig\ndata\ndocs\nexperiments\ngenerated_code\ngit_sync.log\njarvis.py\njarvis_memory.db\nlogs\nmemory\nmemory.md\nmodules\nproject_bundle.txt\npyproject.toml\nrequirements.txt\nrun_jarvis.bat\ntests\nto do.txt\nunittest_output.txt\nvenv\nworkspace_growth.md",
+    "content": "file1.txt\nfile2.py",
     "name": "list_directory"
   },
   {
     "role": "assistant",
-    "content": "<dots_function_call>\n<list_directory\">\n</invoke>\n</dots_function_call>"
+    "content": "The directory has been listed."
   },
   {
-    "role": "tool",
-    "content": ".backups\n.env\n.env.example\n.git\n.gitignore\n.mypy_cache\n.ruff_cache\n.vscode\nModelfile\nREADME.md\n__pycache__\nassests\nassets\nauto_push.sh\nauto_sync.ps1\nconfig\ndata\ndocs\nexperiments\ngenerated_code\ngit_sync.log\njarvis.py\njarvis_memory.db\nlogs\nmemory\nmemory.md\nmodules\nproject_bundle.txt\npyproject.toml\nrequirements.txt\nrun_jarvis.bat\ntests\nto do.txt\nunittest_output.txt\nvenv\nworkspace_growth.md",
-    "name": "list_directory"
+    "role": "user",
+    "content": "hello world"
   },
   {
     "role": "assistant",
-    "content": "<dots_function_call>\n<list_directory\">\n</invoke>\n</dots_function_call>"
+    "content": "Local response from Ollama."
   },
   {
-    "role": "tool",
-    "content": ".backups\n.env\n.env.example\n.git\n.gitignore\n.mypy_cache\n.ruff_cache\n.vscode\nModelfile\nREADME.md\n__pycache__\nassests\nassets\nauto_push.sh\nauto_sync.ps1\nconfig\ndata\ndocs\nexperiments\ngenerated_code\ngit_sync.log\njarvis.py\njarvis_memory.db\nlogs\nmemory\nmemory.md\nmodules\nproject_bundle.txt\npyproject.toml\nrequirements.txt\nrun_jarvis.bat\ntests\nto do.txt\nunittest_output.txt\nvenv\nworkspace_growth.md",
-    "name": "list_directory"
+    "role": "user",
+    "content": "hello world"
+  },
+  {
+    "role": "assistant",
+    "content": "Fallback from Ollama."
   }
 ]

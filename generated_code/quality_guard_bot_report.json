@@ -1,7 +1,7 @@
 {
   "bot": "quality_guard_bot",
   "status": "ok",
-  "files_scanned": 45,
+  "files_scanned": 51,
   "issues_found": 0,
   "summary": "A local syntax scan completed; the project quality signals were logged for future learning loops.",
   "issues": []

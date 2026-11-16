@@ -22,7 +22,7 @@ class TestScheduler(unittest.TestCase):
         self.mock_get_diag = patch("modules.scheduler.get_system_diagnostics").start()
         self.mock_get_diag.return_value = "CPU is at 10%, RAM usage is 20%, and Battery is at 80%."
 
-        self.mock_speak = patch("modules.scheduler.speak").start()
+        self.mock_speak = patch("modules.voice.speak").start()
 
         self.mock_log_error = patch("modules.scheduler.log_error").start()
         self.mock_log_info = patch("modules.scheduler.log_info").start()

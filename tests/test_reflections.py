@@ -117,13 +117,14 @@ class TestPostTaskReflectionsAndFailureCorpus(unittest.TestCase):
         self.assertEqual(mine_failure_corpus(min_occurrences=2, db_path=self.db_path), [])
 
     def test_human_review_workflow(self):
-        evaluate_task_rubric(
-            goal_id="g-rev",
-            task_description="Failing task",
-            output="",
-            execution_error="TimeoutError",
-            db_path=self.db_path,
-        )
+        with patch("modules.reflections._ollama_rubric_scorer", return_value={"scores": {"accuracy": 0.2}, "failure_mode": "incomplete_execution", "root_cause": "timeout", "proposed_remediation": "retry"}):
+            evaluate_task_rubric(
+                goal_id="g-rev",
+                task_description="Failing task",
+                output="",
+                execution_error="TimeoutError",
+                db_path=self.db_path,
+            )
         unreviewed = get_reflections_for_review(
             unreviewed_only=True, failures_only=True, db_path=self.db_path
         )

@@ -1,9 +1,10 @@
 import math
 import queue
+import threading
 import time
 import customtkinter as ctk
 import psutil
-from modules.ai import ask_local_brain, get_active_provider, set_preferred_provider
+
 from modules.logger import log_error, log_info
 from modules.voice import speak, set_voice_enabled, get_voice_enabled
 from modules.memory import (
@@ -22,8 +23,11 @@ ctk.set_default_color_theme("blue")
 
 
 class JarvisHUD:
-    def __init__(self, root: ctk.CTk):
+    """J.A.R.V.I.S. Quantum HUD – floating desktop interface with working input."""
+
+    def __init__(self, root: ctk.CTk, command_callback=None):
         self.root = root
+        self.command_callback = command_callback
         self.visible = bool(get_runtime_state("visible", True))
         self.state = str(get_runtime_state("ui_state", "idle"))
         self.angle = 0
@@ -46,9 +50,8 @@ class JarvisHUD:
         self.preferred_provider = str(get_preference("preferred_provider", get_runtime_state("preferred_provider", "auto")))
         if self.preferred_provider.lower() in {"auto", "automatic", "default", "none", ""}:
             self.preferred_provider = "auto"
-            set_preferred_provider(None)
         else:
-            set_preferred_provider(self.preferred_provider)
+            pass
         self._normal_geometry = None
         set_runtime_state("voice_enabled", self.voice_enabled)
         set_runtime_state("show_telemetry", self.show_telemetry)
@@ -73,7 +76,7 @@ class JarvisHUD:
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_rowconfigure(1, weight=1)
 
-        # Header
+        # --- HEADER ---
         header = ctk.CTkFrame(self.root, fg_color="#0d1d2a", corner_radius=14, height=42)
         header.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 8))
         header.bind("<ButtonPress-1>", self.start_move)
@@ -118,7 +121,7 @@ class JarvisHUD:
         )
         close_btn.pack(side="right")
 
-        # Core panel
+        # --- CORE PANEL ---
         self.body = ctk.CTkFrame(self.root, fg_color="transparent")
         self.body.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 12))
         self.body.grid_columnconfigure(1, weight=1)
@@ -139,7 +142,7 @@ class JarvisHUD:
 
         self.status_var = ctk.StringVar(value="SYSTEMS ONLINE")
         self.status_label = ctk.CTkLabel(
-            main_panel, textvariable=self.status_var,             text_color="#92d2ff",
+            main_panel, textvariable=self.status_var, text_color="#92d2ff",
             font=("DejaVu Sans", 10, "bold")
         )
         self.status_label.grid(row=0, column=0, sticky="w", padx=14, pady=(12, 4))
@@ -160,6 +163,7 @@ class JarvisHUD:
         self.response_box.configure(state="disabled")
         self.response_box.grid(row=2, column=0, sticky="nsew", padx=12, pady=(0, 12))
 
+        # --- INPUT SECTION ---
         input_frame = ctk.CTkFrame(main_panel, fg_color="transparent")
         input_frame.grid(row=3, column=0, sticky="ew", padx=12, pady=(0, 12))
         input_frame.grid_columnconfigure(0, weight=1)
@@ -186,6 +190,7 @@ class JarvisHUD:
         )
         mic_btn.grid(row=0, column=2)
 
+        # --- SETTINGS PANEL ---
         self.settings_frame = ctk.CTkFrame(
             self.root, fg_color="#0d1d2a", corner_radius=14, border_width=1, border_color="#214b6b"
         )
@@ -255,6 +260,7 @@ class JarvisHUD:
             self._normal_geometry = self.root.geometry()
             self.root.geometry(f"{self.root.winfo_screenwidth()}x{self.root.winfo_screenheight()}+0+0")
 
+        # --- HISTORY PANEL ---
         self.history_frame = ctk.CTkFrame(
             self.root, fg_color="#0d1d2a", corner_radius=14, border_width=1, border_color="#7ae6c9"
         )
@@ -322,7 +328,7 @@ class JarvisHUD:
             self.history_box.insert("0.0", "No archival logs recorded yet.")
         else:
             for timestamp, query, response in records:
-                self.history_box.insert("end", f"[{timestamp}]\nUSER: {query}\nJARVIS: {response}\n" + "─"*38 + "\n")
+                self.history_box.insert("end", f"[{timestamp}]\nUSER: {query}\nJARVIS: {response}\n" + "\u2500"*38 + "\n")
         self.history_box.configure(state="disabled")
 
     def set_opacity(self, alpha_val: float):
@@ -370,9 +376,8 @@ class JarvisHUD:
         normalized = value.lower()
         if normalized in {"auto", "automatic", "default", "none"}:
             self.preferred_provider = "auto"
-            set_preferred_provider(None)
-            save_preference("preferred_provider", "auto")
             set_runtime_state("preferred_provider", "auto")
+            save_preference("preferred_provider", "auto")
             self.refresh_provider_status()
             return
 
@@ -386,9 +391,8 @@ class JarvisHUD:
         }
 
         self.preferred_provider = mapping.get(normalized, normalized)
-        set_preferred_provider(self.preferred_provider)
-        save_preference("preferred_provider", self.preferred_provider)
         set_runtime_state("preferred_provider", self.preferred_provider)
+        save_preference("preferred_provider", self.preferred_provider)
         self.refresh_provider_status()
 
     def toggle_hud(self):
@@ -410,10 +414,11 @@ class JarvisHUD:
         set_runtime_state("visible", True)
 
     def refresh_provider_status(self):
-        active = get_active_provider()
+        active = get_runtime_state("active_provider", "auto")
         self.provider_status_var.set(f"Provider: {active.upper() if active and active.lower() != 'auto' else 'AUTO'}")
 
     def update_ui(self, status_text: str, state: str, reply_text: str = None):
+        """Thread-safe: queue a UI update to be processed on the main thread."""
         self.ui_queue.put((status_text, state, reply_text))
         if self._queue_job is None:
             delay = 60 if state in {"thinking", "speaking"} else 120
@@ -427,7 +432,7 @@ class JarvisHUD:
             self.state = state
             set_runtime_state("ui_state", self.state)
             self.refresh_provider_status()
-            if reply_text:
+            if reply_text is not None:
                 self.response_box.configure(state="normal")
                 self.response_box.delete("0.0", "end")
                 self.response_box.insert("0.0", reply_text)
@@ -440,28 +445,32 @@ class JarvisHUD:
         if not query:
             return
         self.cmd_entry.delete(0, "end")
-        import threading
-        from jarvis import process_command
 
-        threading.Thread(
-            target=process_command, args=(query, self.update_ui), daemon=True
-        ).start()
+        self.update_ui("PROCESSING", "thinking", f"> {query}")
+
+        if self.command_callback:
+            threading.Thread(
+                target=self.command_callback, args=(query, self.update_ui), daemon=True
+            ).start()
 
         threading.Thread(
             target=lambda: save_interaction(query, "Processing..."), daemon=True
         ).start()
 
     def on_mic_click(self):
-        import threading
-        from modules.listener import listen_to_user
-        from jarvis import process_command
-
         def background_listen():
-            query = listen_to_user(self.update_ui)
-            if query:
-                process_command(query, self.update_ui)
-            else:
-                self.update_ui("STANDBY // LISTENING", "idle", "Audio input unclear, Sir.")
+            try:
+                from modules.listener import listen_to_user
+                query = listen_to_user(self.update_ui)
+                if query:
+                    self.update_ui("PROCESSING", "thinking", f"> {query}")
+                    if self.command_callback:
+                        self.command_callback(query, self.update_ui)
+                else:
+                    self.update_ui("STANDBY // LISTENING", "idle", "Audio input unclear, Sir.")
+            except Exception as e:
+                log_error(f"Microphone input error: {e}")
+                self.update_ui("ERROR", "idle", f"Voice input unavailable: {e}")
 
         threading.Thread(target=background_listen, daemon=True).start()
 
@@ -482,7 +491,7 @@ class JarvisHUD:
             return
 
         self.canvas.delete("all")
-        cx, cy = 230, 85
+        cx, cy = 46, 46
 
         palette = {
             "idle": ("#00f3ff", "#005577"),
@@ -499,8 +508,8 @@ class JarvisHUD:
 
         for i in range(3):
             offset_angle = self.angle + (i * 50)
-            r_x = 65 + (i * 14) + math.sin(math.radians(offset_angle * 2)) * wobble_factor
-            r_y = 45 + (i * 11) + math.cos(math.radians(offset_angle * 2)) * wobble_factor
+            r_x = 30 + (i * 7) + math.sin(math.radians(offset_angle * 2)) * wobble_factor
+            r_y = 22 + (i * 5) + math.cos(math.radians(offset_angle * 2)) * wobble_factor
 
             outline_color = primary if i % 2 == 0 else secondary
 
@@ -510,17 +519,17 @@ class JarvisHUD:
             )
 
         self.canvas.create_arc(
-            cx - 80, cy - 60, cx + 80, cy + 60,
+            cx - 40, cy - 30, cx + 40, cy + 30,
             start=self.angle * 1.5, extent=130, style="arc", outline=primary, width=3
         )
         self.canvas.create_arc(
-            cx - 55, cy - 75, cx + 55, cy + 75,
+            cx - 27, cy - 37, cx + 27, cy + 37,
             start=-self.angle, extent=160, style="arc", outline=secondary, width=2
         )
 
         pulse = math.sin(math.radians(self.angle * 6)) * (8 if self.state == "speaking" else 2)
         self.canvas.create_oval(
-            cx - 9 + pulse, cy - 9 + pulse, cx + 9 + pulse, cy + 9 + pulse,
+            cx - 4 + pulse, cy - 4 + pulse, cx + 4 + pulse, cy + 4 + pulse,
             fill=primary, outline=""
         )
 
@@ -531,7 +540,7 @@ class JarvisHUD:
                 cpu = psutil.cpu_percent(interval=None)
                 ram = psutil.virtual_memory().percent
                 self.canvas.create_text(
-                    46, 12, text=f"CPU:{cpu}% RAM:{ram}%", fill=secondary,         font=("DejaVu Sans Mono", 8, "bold")
+                    46, 12, text=f"CPU:{cpu}% RAM:{ram}%", fill=secondary, font=("DejaVu Sans Mono", 8, "bold")
                 )
 
         self.animate_rings()

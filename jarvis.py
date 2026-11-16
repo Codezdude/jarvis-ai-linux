@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
   root = ctk.CTk()
   root.title("J.A.R.V.I.S. Quantum HUD")
-  hud_instance = JarvisHUD(root)
+  hud_instance = JarvisHUD(root, command_callback=process_command)
 
   # Start the background scheduler (Triggers automatically at 7:00 AM)
   try:

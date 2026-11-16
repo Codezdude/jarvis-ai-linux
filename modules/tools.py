@@ -1,6 +1,8 @@
-import datetime
-import json
 import os
+import datetime
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import json
 import re
 import subprocess
 import urllib.request
@@ -36,7 +38,6 @@ from modules.db import log_long_term_memory, search_long_term_memory
 from modules.logger import log_error, log_info
 from modules.safe_storage import atomic_write_text
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _resolve_project_path(filepath: str) -> str:

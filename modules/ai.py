@@ -1395,48 +1395,94 @@ def ask_local_brain(query: str, force_provider: str | None = None, is_urgent: bo
         return f"Local brain error: {e}"
 
 
-def stream_local_brain(prompt: str, history: list[dict] | None = None, force_provider: str | None = None):
-    """Yield text chunks from a streaming provider, falling back to a single full response.
+def stream_local_brain(
+    prompt: str,
+    history: list[dict] | None = None,
+    force_provider: str | None = None,
+    is_urgent: bool = True,
+):
+    """Yield live incremental tokens from a streaming provider.
 
-    Uses Ollama ``/api/chat`` with ``stream=True`` when available, otherwise
-    yields the full ``ask_local_brain(...)`` response as one chunk.
+    Streams from local Ollama (``/api/chat`` with ``stream=True``) when that is
+    the selected/offload target, records token/latency telemetry via
+    :func:`record_provider_usage`, and falls back cleanly to a single full
+    ``ask_local_brain`` response when streaming is unavailable.
     """
     import json as _json
     import urllib.request
 
-    messages = list(history) if history else [{"role": "user", "content": prompt}]
+    messages = list(history) if history else []
+    if not messages or messages[-1].get("content") != prompt:
+        messages.append({"role": "user", "content": prompt})
 
-    # Try Ollama streaming first
-    if ollama is not None:
+    try:
+        from modules.preferences import get_runtime_settings
+
+        routing_mode = get_runtime_settings().get("routing_mode", "auto")
+    except Exception:
+        routing_mode = "auto"
+
+    use_ollama = (force_provider == "ollama") or (
+        force_provider is None and routing_mode == "ollama_only"
+    )
+
+    if use_ollama:
+        ollama_url = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/") + "/api/chat"
+        model = os.getenv("OLLAMA_MODEL", MODEL_NAME)
+        payload = _json.dumps(
+            {
+                "model": model,
+                "messages": sanitize_fallback_messages(messages),
+                "stream": True,
+            }
+        ).encode("utf-8")
+        req = urllib.request.Request(
+            ollama_url, data=payload, headers={"Content-Type": "application/json"}
+        )
+        t0 = time.perf_counter()
+        emitted = []
         try:
-            payload = _json.dumps(
-                {"model": MODEL_NAME, "messages": messages, "stream": True}
-            ).encode("utf-8")
-            req = urllib.request.Request(
-                "http://localhost:11434/api/chat",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-            )
             with urllib.request.urlopen(req, timeout=120) as resp:
                 for raw_line in resp:
-                    line = raw_line.decode("utf-8").strip()
+                    line = raw_line.decode("utf-8", errors="replace").strip()
                     if not line:
                         continue
                     try:
                         data = _json.loads(line)
                     except ValueError:
                         continue
-                    chunk = data.get("message", {}).get("content", "")
-                    if chunk:
-                        yield chunk
+                    delta = data.get("message", {}).get("content", "")
+                    if delta:
+                        emitted.append(delta)
+                        yield delta
                     if data.get("done"):
                         break
+            latency_ms = (time.perf_counter() - t0) * 1000.0
+            full_out = "".join(emitted)
+            try:
+                from modules.budget import record_provider_usage
+
+                record_provider_usage(
+                    provider="ollama",
+                    model=model,
+                    prompt_tokens=max(1, len(prompt) // 4),
+                    completion_tokens=max(1, len(full_out) // 4),
+                    latency_ms=latency_ms,
+                    success=True,
+                    is_urgent=is_urgent,
+                )
+            except Exception:
+                pass
             return
         except Exception:
-            pass
+            # Partial output already yielded; otherwise fall through to the cloud path.
+            if emitted:
+                return
 
-    # Fallback: single full response
-    yield ask_local_brain(prompt, force_provider=force_provider)
+    # Fallback / cloud path: single full response.
+    full_reply = ask_local_brain(prompt, force_provider=force_provider, is_urgent=is_urgent)
+    if full_reply:
+        yield full_reply
 
 
 def call_antigravity_cli(messages: list) -> str:

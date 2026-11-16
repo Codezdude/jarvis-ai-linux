@@ -107,6 +107,53 @@ class TestUIStreaming(unittest.TestCase):
         self.assertEqual(hud._live_assistant_buffer, None)
 
 
+class TestStreamLocalBrain(unittest.TestCase):
+    """Cycle 1: true token streaming from stream_local_brain."""
+
+    def _fake_resp(self, lines):
+        class _R:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def __iter__(self):
+                for ln in lines:
+                    yield ln
+
+        return _R()
+
+    def test_streams_incremental_tokens_and_records_telemetry(self):
+        import modules.ai as ai
+
+        lines = [
+            b'{"message":{"content":"Hel"}}',
+            b'{"message":{"content":"lo"}}',
+            b'{"done":true}',
+        ]
+        captured = {}
+        with patch("urllib.request.urlopen", return_value=self._fake_resp(lines)), \
+             patch("modules.preferences.get_runtime_settings",
+                   return_value={"routing_mode": "ollama_only"}), \
+             patch("modules.budget.record_provider_usage",
+                   side_effect=lambda **k: captured.update(k)):
+            chunks = list(ai.stream_local_brain("hi", force_provider=None, is_urgent=True))
+
+        self.assertEqual("".join(chunks), "Hello")
+        self.assertEqual(captured.get("provider"), "ollama")
+        self.assertTrue(captured.get("success"))
+
+    def test_fallback_yields_full_reply(self):
+        import modules.ai as ai
+
+        with patch("modules.preferences.get_runtime_settings",
+                   return_value={"routing_mode": "auto"}), \
+             patch("modules.ai.ask_local_brain", return_value="full reply"):
+            chunks = list(ai.stream_local_brain("hi", force_provider="groq"))
+        self.assertEqual(chunks, ["full reply"])
+
+
 class TestCodeBlockAndBadges(unittest.TestCase):
     def test_extract_last_code_block(self):
         from modules.ui import _extract_last_code_block

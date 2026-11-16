@@ -143,8 +143,25 @@ def process_command(query: str, hud_callback=None, chunk_callback=None):
 
         # 4. Autonomous 5-Step Agent Loop
         else:
-            response_text = ask_local_brain_with_tools(query)
-            _stream_reply_chunks(response_text, chunk_callback)
+            from modules.ai import should_attach_tools, stream_local_brain
+
+            if chunk_callback is not None and not should_attach_tools(query):
+                # True token streaming for simple conversational queries (no tools).
+                parts = []
+                for chunk in stream_local_brain(query, is_urgent=True):
+                    if chunk:
+                        parts.append(chunk)
+                        try:
+                            chunk_callback(chunk)
+                        except Exception:
+                            pass
+                response_text = "".join(parts)
+                if not response_text:
+                    response_text = ask_local_brain_with_tools(query)
+            else:
+                # Tool-capable queries keep the agentic loop; reveal the final reply.
+                response_text = ask_local_brain_with_tools(query)
+                _stream_reply_chunks(response_text, chunk_callback)
             if speak_allowed:
                 speak(response_text, hud_callback)
 

@@ -1,5 +1,6 @@
 import ast
 import datetime
+import fcntl
 import importlib
 import json
 import os
@@ -7,12 +8,60 @@ import py_compile
 import shutil
 import subprocess
 import sys
+import time
+from typing import Optional
 from config.settings import SAFE_MODE
 from modules.logger import log_error, log_info
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BACKUP_DIR = os.path.join(PROJECT_ROOT, ".backups")
 LOG_PATH = os.path.join(PROJECT_ROOT, "logs", "jarvis_system.log")
+
+# Lock directory. One .lock file per protected module, so two concurrent cycles
+# (scheduler.process_one_idle_goal and an external coding agent) cannot both edit
+# modules/ai.py at the same time. fcntl.flock is advisory and survives process
+# restarts; the lock file is cleaned up on close.
+LOCK_DIR = os.path.join(PROJECT_ROOT, ".locks")
+DEFAULT_LOCK_TIMEOUT_SEC = int(os.getenv("JARVIS_FILE_LOCK_TIMEOUT_SEC", "30"))
+
+
+def acquire_module_lock(rel_path: str, timeout_sec: int = DEFAULT_LOCK_TIMEOUT_SEC) -> Optional[object]:
+    """Acquire an exclusive fcntl lock for ``rel_path`` (e.g. ``modules/ai.py``).
+
+    Returns an open file object whose ``close()`` releases the lock, or None if
+    the lock could not be acquired within ``timeout_sec``. Callers MUST close the
+    returned object in a finally block.
+    """
+    import fcntl as _fcntl
+    sanitized = rel_path.replace(os.sep, "__").replace("/", "__")
+    os.makedirs(LOCK_DIR, exist_ok=True)
+    lock_path = os.path.join(LOCK_DIR, sanitized + ".lock")
+    fh = open(lock_path, "w")
+    deadline = time.time() + max(1, int(timeout_sec))
+    while True:
+        try:
+            _fcntl.flock(fh, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+            return fh
+        except (BlockingIOError, OSError):
+            if time.time() >= deadline:
+                fh.close()
+                log_error(f"File lock timeout for {rel_path} after {timeout_sec}s")
+                return None
+            time.sleep(0.25)
+
+
+def release_lock(fh) -> None:
+    """Release a lock previously acquired by acquire_module_lock."""
+    if fh is None:
+        return
+    try:
+        fcntl.flock(fh, fcntl.LOCK_UN)
+    except Exception:
+        pass
+    try:
+        fh.close()
+    except Exception:
+        pass
 
 
 def _resolve_project_path(filepath: str) -> str:

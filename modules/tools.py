@@ -1073,6 +1073,31 @@ def get_all_dynamic_tool_schemas() -> List[Dict[str, Any]]:
     ]
 
 
+def rank_tool_schemas(query: str, schemas: List[Dict[str, Any]], top_k: int = 5) -> List[Dict[str, Any]]:
+    """Return the top_k schemas most relevant to a query by token overlap.
+
+    Generic ranker over already-built OpenAI-style tool schemas; used for MCP
+    tools (and any pre-built schema list). Falls back to the first ``top_k`` when
+    no tokens overlap or the query is empty.
+    """
+    if not schemas:
+        return []
+    if len(schemas) <= top_k:
+        return list(schemas)
+    q_tokens = set(re.findall(r"[a-z0-9_]+", (query or "").lower()))
+    if not q_tokens:
+        return list(schemas[:top_k])
+    scored = []
+    for idx, schema in enumerate(schemas):
+        fn = schema.get("function", {}) if isinstance(schema, dict) else {}
+        blob = f"{fn.get('name', '')} {fn.get('description', '')}".lower()
+        t_tokens = set(re.findall(r"[a-z0-9_]+", blob))
+        overlap = len(q_tokens & t_tokens)
+        scored.append((overlap, -idx, schema))
+    scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [item[2] for item in scored[:top_k]]
+
+
 def get_relevant_dynamic_tool_schemas(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
     """Return the top_k dynamic tool schemas most relevant to a query.
 

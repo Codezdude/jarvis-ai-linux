@@ -2210,10 +2210,11 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None, is
     if use_tools:
         try:
             from modules.mcp_bridge import get_mcp_tool_schemas
+            from modules.tools import rank_tool_schemas
 
             mcp_schemas = get_mcp_tool_schemas()
             if mcp_schemas:
-                active_tools = (active_tools or []) + mcp_schemas[:5]
+                active_tools = (active_tools or []) + rank_tool_schemas(query, mcp_schemas, top_k=5)
         except Exception:
             pass
 

@@ -1,70 +1,68 @@
 [
   {
+    "role": "assistant",
+    "content": "Done."
+  },
+  {
+    "role": "user",
+    "content": "list files"
+  },
+  {
+    "role": "assistant",
+    "content": "<dots_function_call><list_directory></list></dots_function_call>"
+  },
+  {
     "role": "tool",
-    "content": ".backups\n.env\n.env.example\n.git\n.gitignore\n.mypy_cache\n.ruff_cache\n.vscode\nModelfile\nREADME.md\n__pycache__\nassests\nassets\nauto_push.sh\nauto_sync.ps1\nconfig\ndata\ndocs\nexperiments\ngenerated_code\ngit_sync.log\njarvis.py\njarvis_memory.db\nlogs\nmemory\nmemory.md\nmodules\nproject_bundle.txt\npyproject.toml\nrequirements.txt\nrun_jarvis.bat\ntests\nto do.txt\nunittest_output.txt\nvenv\nworkspace_growth.md",
+    "content": "file1.txt",
     "name": "list_directory"
   },
   {
     "role": "assistant",
-    "content": "<dots_function_call>\n<list_directory>\n</invoke>\n</dots_function_call>"
+    "content": "<dots_function_call><list_directory></list></dots_function_call>"
+  },
+  {
+    "role": "assistant",
+    "content": "Done listing."
+  },
+  {
+    "role": "user",
+    "content": "hello"
+  },
+  {
+    "role": "assistant",
+    "content": "Just a normal response."
+  },
+  {
+    "role": "user",
+    "content": "list the current directory"
+  },
+  {
+    "role": "assistant",
+    "content": "Let me check. <dots_function_call><list_directory></list></dots_function_call>"
   },
   {
     "role": "tool",
-    "content": ".backups\n.env\n.env.example\n.git\n.gitignore\n.mypy_cache\n.ruff_cache\n.vscode\nModelfile\nREADME.md\n__pycache__\nassests\nassets\nauto_push.sh\nauto_sync.ps1\nconfig\ndata\ndocs\nexperiments\ngenerated_code\ngit_sync.log\njarvis.py\njarvis_memory.db\nlogs\nmemory\nmemory.md\nmodules\nproject_bundle.txt\npyproject.toml\nrequirements.txt\nrun_jarvis.bat\ntests\nto do.txt\nunittest_output.txt\nvenv\nworkspace_growth.md",
+    "content": "file1.txt\nfile2.py",
     "name": "list_directory"
   },
   {
     "role": "assistant",
-    "content": "I see. The memory file I have contains information about Nova Studio, but it appears that might not be your current brand. Could you please tell me what your brand is, or if you'd like me to update the memory file with the correct information?"
+    "content": "The directory has been listed."
   },
   {
     "role": "user",
-    "content": "it is Health Lexivon"
+    "content": "hello world"
   },
   {
     "role": "assistant",
-    "content": "Sir. I'll make sure to update my memory with the correct information. Health Lexivon is now noted as your brand. If you'd like, I can also review the files and see if there are any updates or modifications that can be made to better suit your brand's needs. Would you like me to proceed with that?"
+    "content": "Local response from Ollama."
   },
   {
     "role": "user",
-    "content": "yes"
+    "content": "hello world"
   },
   {
     "role": "assistant",
-    "content": "Sir. I'll review the files and see if there are any updates or modifications that can be made to better suit Health Lexivon's needs.\n\nUpon reviewing the files, I noticed that the `memory.md` file contains information about Nova Studio, which is no longer relevant. I can update this file to reflect the correct information about Health Lexivon.\n\nAdditionally, I can also review the `jarvis.py` file and other modules to see if there are any modifications that can be made to better align with Health Lexivon's goals and objectives.\n\nBefore making any changes, I'd like to confirm with you, Sir. Would you like me to:\n\n1. Update the `memory.md` file with the correct information about Health Lexivon?\n2. Review the `jarvis.py` file and other modules to see if any modifications can be made to better suit Health Lexivon's needs?\n\nPlease let me know how to proceed, Sir."
-  },
-  {
-    "role": "assistant",
-    "content": "It seems like you might have sent a duplicate message or an incomplete request. Could you please provide more details so I can assist you effectively?"
-  },
-  {
-    "role": "user",
-    "content": "resend last message"
-  },
-  {
-    "role": "user",
-    "content": "hi"
-  },
-  {
-    "role": "assistant",
-    "content": "Hello, Sir! It's good to hear from you again.\n\nI see we had a bit of a hiccup with duplicate messages earlier. To confirm — your brand is **Health Lexivon**, and you'd like me to update my memory and review the project files to better align with your brand, correct?\n\nJust let me know what specific areas you'd like me to focus on, and I'll get right on it."
-  },
-  {
-    "role": "user",
-    "content": "yes"
-  },
-  {
-    "role": "assistant",
-    "content": "<dots_function_call>\n<read_local_file\">\n<parameter name=\"filepath\">/home/user/memory.md</parameter>\n</invoke>\n</dots_function_call>\n<dots_function_call>\n<list_directory\">\n</invoke>\n</dots_function_call>"
-  },
-  {
-    "role": "tool",
-    "content": "Tool error in read_local_file: read_local_file() missing 1 required positional argument: 'filepath'",
-    "name": "read_local_file"
-  },
-  {
-    "role": "tool",
-    "content": ".backups\n.env\n.env.example\n.git\n.gitignore\n.mypy_cache\n.ruff_cache\n.vscode\nModelfile\nREADME.md\n__pycache__\nassests\nassets\nauto_push.sh\nauto_sync.ps1\nconfig\ndata\ndocs\nexperiments\ngenerated_code\ngit_sync.log\njarvis.py\njarvis_memory.db\nlogs\nmemory\nmemory.md\nmodules\nproject_bundle.txt\npyproject.toml\nrequirements.txt\nrun_jarvis.bat\ntests\nto do.txt\nunittest_output.txt\nvenv\nworkspace_growth.md",
-    "name": "list_directory"
+    "content": "Fallback from Ollama."
   }
 ]

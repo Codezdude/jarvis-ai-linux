@@ -2109,6 +2109,8 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None) ->
                 ollama_model = _select_ollama_model(query, history)
                 print(f"[ROUTER] Selected Ollama model: {ollama_model}")
 
+                called_tools: set[tuple[str, str]] = set()
+                duplicate_detected = False
                 for step in range(5):
                     response = ollama.chat(
                         model=ollama_model,
@@ -2132,11 +2134,19 @@ def ask_local_brain_with_tools(query: str, force_provider: str | None = None) ->
                         func_name = tool_call["function"]["name"]
                         raw_args = tool_call["function"].get("arguments", {})
                         func_args = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
+                        call_key = (func_name, json.dumps(func_args, sort_keys=True))
+                        if call_key in called_tools:
+                            print(f"[LOCAL AGENT] Duplicate tool call detected: {func_name}. Breaking loop.")
+                            duplicate_detected = True
+                            break
+                        called_tools.add(call_key)
                         print(f"[LOCAL AGENT Step {step + 1}/5] Tool: {func_name}")
 
                         tool_result = _dispatch_tool(func_name, func_args)
                         tool_messages.append({"role": "tool", "content": str(tool_result), "name": func_name})
 
+                    if duplicate_detected:
+                        break
                     with CONVERSATION_LOCK:
                         CONVERSATION_HISTORY.extend(tool_messages)
                         history = list(CONVERSATION_HISTORY)

@@ -84,6 +84,7 @@ from modules.workspace_growth import (
     search_project_memory_index,
     search_workspace_growth_log,
 )
+from modules.self_update import self_update_system, verify_python_syntax
 
 # --- PERSISTENT MEMORY INJECTION ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -182,6 +183,7 @@ AVAILABLE_TOOLS = {
     "build_project_memory_index": build_project_memory_index,
     "search_project_memory_index": search_project_memory_index,
     "search_workspace_growth_log": search_workspace_growth_log,
+    "self_update_system": self_update_system,
 }
 
 # Tool schemas format for OpenAI-compatible providers (Groq & Ollama)
@@ -632,6 +634,22 @@ TOOL_SCHEMAS = [
                     "module_name": {"type": "string", "description": "The module import name to reload, e.g. 'modules.tools'"}
                 },
                 "required": ["module_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "self_update_system",
+            "description": "Safely self-updates JARVIS: verifies syntax, commits local changes, pulls from Git, optionally updates Ollama models, and restarts the process. Use this when the user asks to update, upgrade, or restart JARVIS.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pull_git": {"type": "boolean", "description": "Whether to pull updates from Git (default: true)"},
+                    "update_ollama_models": {"type": "boolean", "description": "Whether to refresh Ollama models llama3.2:3b and qwen2.5:7b (default: false)"},
+                    "restart_after": {"type": "boolean", "description": "Whether to restart JARVIS after updating (default: true)"},
+                },
+                "required": [],
             },
         },
     },
@@ -1427,10 +1445,11 @@ def choose_provider_order(query: str, available_providers: list[str] | None = No
     return sorted(available, key=lambda provider: (-scores.get(provider, 0), fallback_order.get(provider, 99)))
 
 
-def _select_ollama_model(query: str) -> str:
-    """Select the Ollama model based on query complexity.
+def _select_ollama_model(query: str, history: list[dict] | None = None) -> str:
+    """Select the Ollama model based on query complexity and conversation context.
 
-    Lightweight/fast tasks use llama3.2:3b; complex reasoning uses qwen2.5:7b.
+    qwen2.5:7b is preferred for multi-turn tool/context tracking, self-update,
+    and complex reasoning. llama3.2:3b handles lightweight/fast tasks.
     """
     complex_keywords = (
         "code", "coding", "debug", "debugging", "bug", "fix", "error", "python",
@@ -1439,9 +1458,16 @@ def _select_ollama_model(query: str) -> str:
         "analyze", "analysis", "research", "complex", "reasoning", "architecture",
         "design", "implement", "optimize", "performance", "security",
         "write a", "create a", "generate", "explain how", "step by step",
+        "update", "upgrade", "restart", "git", "pull", "commit", "rollback",
+        "self", "improve", "evolve", "tool", "autonomous",
     )
     q = (query or "").lower()
-    if any(kw in q for kw in complex_keywords):
+
+    # Multi-turn context: qwen2.5:7b holds tool-calling instructions better
+    turn_count = len(history) if history else 0
+    is_multi_turn = turn_count > 4
+
+    if any(kw in q for kw in complex_keywords) or is_multi_turn:
         return "qwen2.5:7b"
     return "llama3.2:3b"
 
@@ -1609,7 +1635,7 @@ def ask_local_brain_with_tools(query: str) -> str:
                 if ollama is None:
                     continue
 
-                ollama_model = _select_ollama_model(query)
+                ollama_model = _select_ollama_model(query, history)
                 print(f"[ROUTER] Selected Ollama model: {ollama_model}")
 
                 response = ollama.chat(

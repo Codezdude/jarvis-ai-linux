@@ -11,10 +11,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Push to Google Drive
-        uses: Jahnossi/google-drive-upload-action@v1.4.1
+      - name: Upload to Google Drive
+        uses: Jumbo810/Upload_Github_Artifacts_TO_GDrive@v2.3.5
         with:
+          target: "./"
           credentials: ${{ secrets.GOOGLE_CREDENTIALS }}
-          folder-id: ${{ secrets.GDRIVE_FOLDER_ID }}
-          local-path: ./
-          exclude: ".git/"
+          parent_folder_id: ${{ secrets.GDRIVE_FOLDER_ID }}
+          override: true

@@ -16,7 +16,7 @@ jobs:
           zip -r jarvis_project_backup.zip . -x ".git/*" ".github/*"
 
       - name: Upload to Google Drive
-        uses: Jumbo810/Upload_Github_Artifacts_TO_GDrive@v2.3.5
+        uses: Jumbo810/Upload_Github_Artifacts_TO_GDrive)
         with:
           target: "./jarvis_project_backup.zip"
           credentials: ${{ secrets.GOOGLE_CREDENTIALS }}

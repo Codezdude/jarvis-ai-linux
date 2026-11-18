@@ -1,17 +1,17 @@
-import os
+import functools
 import json
+import os
 import re
 import shutil
 import subprocess
 import threading
 import time
 import traceback
-import functools
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
-    from openai import OpenAI, APITimeoutError, APIConnectionError
+    from openai import APIConnectionError, APITimeoutError, OpenAI
 except ImportError:  # pragma: no cover - optional dependency for cloud-compatible gateways
     OpenAI = None
     APITimeoutError = Exception
@@ -33,16 +33,16 @@ except ImportError:  # pragma: no cover - optional dependency for cloud fallback
     genai = None
 
 from config.settings import MODEL_NAME
-from modules.logger import log_error
 from modules.audit import DecisionTrace, log_audit_event
 from modules.automation import (
     content_idea_bot,
     experiment_review_bot,
     memory_cleanup_bot,
-    quality_guard_bot,
     publish_carousel_to_instagram,
+    quality_guard_bot,
     run_free_automation_bots,
 )
+from modules.logger import log_error
 from modules.memory import (
     get_memory_entry,
     get_recent_reflections,
@@ -52,23 +52,30 @@ from modules.memory import (
     search_memories,
     set_runtime_state,
 )
-from modules.learning import record_interaction, summarize_recent_logs, auto_learn_from_logs
 from modules.mind import cognitive_review_loop
-from modules.preferences import format_preferences_for_prompt, set_preference as _set_preference_raw
+from modules.preferences import format_preferences_for_prompt
+from modules.preferences import set_preference as _set_preference_raw
+from modules.self_update import self_update_system
 from modules.tools import (
     apply_self_improvement,
     browser_automation_task,
+    capture_desktop_screenshot,
     capture_post_analytics,
+    control_linux_app,
     create_promotional_flyer,
     edit_file_section,
     generate_brand_concepts,
+    generate_image,
     generate_social_post_brief,
+    get_all_dynamic_tool_schemas,
     get_current_time,
+    get_relevant_dynamic_tool_schemas,
     get_system_diagnostics,
     inspect_recent_logs,
     list_directory,
     list_instagram_queue,
     log_long_term_memory,
+    manage_clipboard,
     open_website,
     read_local_file,
     reload_jarvis_module,
@@ -80,18 +87,11 @@ from modules.tools import (
     schedule_social_post,
     search_long_term_memory,
     search_project_files,
+    set_system_volume,
     validate_code_syntax,
+    web_fetch_and_learn,
     web_search,
     write_local_file,
-    generate_image,
-    web_fetch_and_learn,
-    set_system_volume,
-    control_linux_app,
-    manage_clipboard,
-    capture_desktop_screenshot,
-    get_all_dynamic_tool_schemas,
-    get_dynamic_tool,
-    get_relevant_dynamic_tool_schemas,
 )
 from modules.workspace_growth import (
     append_workspace_growth_log,
@@ -100,7 +100,6 @@ from modules.workspace_growth import (
     search_project_memory_index,
     search_workspace_growth_log,
 )
-from modules.self_update import self_update_system, verify_python_syntax
 
 # --- PERSISTENT MEMORY INJECTION ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -112,7 +111,7 @@ def load_env_file():
     if not os.path.exists(ENV_PATH):
         return
 
-    with open(ENV_PATH, "r", encoding="utf-8") as env_file:
+    with open(ENV_PATH, encoding="utf-8") as env_file:
         for line in env_file:
             stripped = line.strip()
             if not stripped or stripped.startswith("#") or "=" not in stripped:
@@ -132,7 +131,7 @@ def load_memory_content():
     memory_path = os.path.join(BASE_DIR, "memory.md")
     if os.path.exists(memory_path):
         try:
-            with open(memory_path, "r", encoding="utf-8") as f:
+            with open(memory_path, encoding="utf-8") as f:
                 content = f.read().strip()
             return content if content else "No persistent memory found."
         except Exception:
@@ -963,7 +962,7 @@ def _load_session_history_from_disk() -> None:
     if not os.path.exists(SESSION_HISTORY_PATH):
         return
     try:
-        with open(SESSION_HISTORY_PATH, "r", encoding="utf-8") as f:
+        with open(SESSION_HISTORY_PATH, encoding="utf-8") as f:
             saved = json.load(f)
         if isinstance(saved, list) and saved:
             CONVERSATION_HISTORY.extend(saved[-12:])
@@ -1938,17 +1937,17 @@ def _query_needs_tools(query: str) -> bool:
     return any(trigger in q for trigger in action_triggers)
 
 
-_LATEST_DECISION_TRACE: Optional[DecisionTrace] = None
+_LATEST_DECISION_TRACE: DecisionTrace | None = None
 
 
-def get_latest_decision_trace() -> Optional[dict]:
+def get_latest_decision_trace() -> dict | None:
     """Return the latest DecisionTrace as a dict for HUD rendering."""
     if _LATEST_DECISION_TRACE is None:
         return None
     return _LATEST_DECISION_TRACE.to_dict()
 
 
-_LAST_PROVIDER_USAGE: Dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0}
+_LAST_PROVIDER_USAGE: dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0}
 
 
 def _set_last_usage(response: Any) -> None:
@@ -2105,7 +2104,7 @@ def _dispatch_tool(func_name: str, func_args: dict) -> str:
         return _self_heal_tool_error(func_name, tool_err, func_args)
 
 
-def _self_heal_tool_error(func_name: str, exc: Exception, func_args: Optional[dict] = None) -> str:
+def _self_heal_tool_error(func_name: str, exc: Exception, func_args: dict | None = None) -> str:
     """Turn a tool exception into an actionable message so the model can self-correct.
 
     Captures the exception type, message, and the deepest frame, logs the full

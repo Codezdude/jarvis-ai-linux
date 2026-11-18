@@ -1,0 +1,1097 @@
+[main 50fd251] Auto-update: 2026-11-16 00:40:01
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   702053b..50fd251  main -> main
+Changes pushed to GitHub!
+No changes to push.
+[main 4dd3a49] Auto-update: 2026-11-16 00:50:01
+ 5 files changed, 72 insertions(+), 37 deletions(-)
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   50fd251..4dd3a49  main -> main
+Changes pushed to GitHub!
+No changes to push.
+[main 146048c] Auto-update: 2026-11-16 01:00:01
+ 14 files changed, 805 insertions(+), 317 deletions(-)
+ create mode 100644 .backups/20261116_005906_tests___test_dummy_module.py
+ create mode 100644 .backups/20261116_005948_tests___test_dummy_module.py
+ create mode 100644 pyproject.toml
+ create mode 100644 tests/test_jarvis.py
+ create mode 100644 tests/test_scheduler.py
+ create mode 100644 tests/test_ui.py
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   4dd3a49..146048c  main -> main
+Changes pushed to GitHub!
+[main 2b9ea7e] Auto-update: 2026-11-16 01:05:01
+ 9 files changed, 578 insertions(+), 539 deletions(-)
+ create mode 100644 .backups/20261116_010040_tests___test_dummy_module.py
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   146048c..2b9ea7e  main -> main
+Changes pushed to GitHub!
+[main 4f71923] Auto-update: 2026-11-16 01:10:01
+ 9 files changed, 149 insertions(+), 7 deletions(-)
+ create mode 100644 .backups/20261116_010520_tests___test_dummy_module.py
+ create mode 100644 modules/self_update.py
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   2b9ea7e..4f71923  main -> main
+Changes pushed to GitHub!
+[main b00728a] Auto-update: 2026-11-16 01:15:01
+ 4 files changed, 10 insertions(+), 2 deletions(-)
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   4f71923..b00728a  main -> main
+Changes pushed to GitHub!
+[main 62c4b72] Auto-update: 2026-11-16 01:20:02
+ 1 file changed, 5 insertions(+)
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   b00728a..62c4b72  main -> main
+Changes pushed to GitHub!
+[main 93669e1] Auto-update: 2026-11-16 01:25:01
+ 21 files changed, 1930 insertions(+), 1856 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-012317/README.md
+ mode change 100755 => 100644 generated_code/nested/file.txt
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   62c4b72..93669e1  main -> main
+Changes pushed to GitHub!
+[main 0e10c73] Auto-update: 2026-11-16 01:30:01
+ 4 files changed, 128 insertions(+), 49 deletions(-)
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   93669e1..0e10c73  main -> main
+Changes pushed to GitHub!
+[main 3ce4b2c] Auto-update: 2026-11-16 01:35:01
+ 12 files changed, 622 insertions(+), 273 deletions(-)
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   0e10c73..3ce4b2c  main -> main
+Changes pushed to GitHub!
+[main e29088d] Auto-update: 2026-11-16 01:40:01
+ 14 files changed, 45 insertions(+), 5 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-013533/README.md
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   3ce4b2c..e29088d  main -> main
+Changes pushed to GitHub!
+[main 0daed65] Auto-update: 2026-11-16 01:45:01
+ 18 files changed, 192 insertions(+), 7 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-014213/README.md
+ create mode 100644 experiments/brand_testing_20261116-014305/README.md
+ create mode 100644 experiments/brand_testing_20261116-014406/README.md
+ create mode 100644 experiments/brand_testing_20261116-014422/README.md
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   e29088d..0daed65  main -> main
+Changes pushed to GitHub!
+[main 24a1d30] Auto-update: 2026-11-16 01:50:02
+ 16 files changed, 112 insertions(+), 4 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-014507/README.md
+ create mode 100644 memory/session_history.json
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   0daed65..24a1d30  main -> main
+Changes pushed to GitHub!
+[main 7ee4cbb] Auto-update: 2026-11-16 01:55:01
+ 8 files changed, 34 insertions(+), 6 deletions(-)
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   24a1d30..7ee4cbb  main -> main
+Changes pushed to GitHub!
+[main a102fc7] Auto-update: 2026-11-16 02:00:01
+ 15 files changed, 345 insertions(+), 302 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-015957/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Created autostash: a29193f
+Current branch main is up to date.
+Applied autostash.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   7ee4cbb..a102fc7  main -> main
+Changes pushed to GitHub!
+[main 72b4e12] Auto-update: 2026-11-16 02:05:02
+ 16 files changed, 219 insertions(+), 103 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-020351/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   a102fc7..72b4e12  main -> main
+Changes pushed to GitHub!
+[main da2f532] Auto-update: 2026-11-16 02:10:01
+ 16 files changed, 870 insertions(+), 800 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-020727/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   72b4e12..da2f532  main -> main
+Changes pushed to GitHub!
+[main f474bad] Auto-update: 2026-11-16 02:15:21
+ 16 files changed, 96 insertions(+), 4 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-021124/README.md
+ create mode 100644 experiments/brand_testing_20261116-021146/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   da2f532..f474bad  main -> main
+Changes pushed to GitHub!
+No changes to push.
+No changes to push.
+[main db59c36] Auto-update: 2026-11-16 02:30:01
+ 4 files changed, 358 insertions(+)
+ create mode 100644 modules/audit.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   f474bad..db59c36  main -> main
+Changes pushed to GitHub!
+[main d733497] Auto-update: 2026-11-16 02:35:01
+ 5 files changed, 219 insertions(+), 15 deletions(-)
+ create mode 100644 logs/audit.jsonl
+ create mode 100644 tests/test_audit_and_protection.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   db59c36..d733497  main -> main
+Changes pushed to GitHub!
+[main 1af2a57] Auto-update: 2026-11-16 02:40:01
+ 3 files changed, 22 insertions(+), 1 deletion(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   d733497..1af2a57  main -> main
+Changes pushed to GitHub!
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+[main 601772b] Auto-update: 2026-11-16 07:35:01
+ 1 file changed, 290 insertions(+)
+ create mode 100644 modules/preferences.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   1af2a57..601772b  main -> main
+Changes pushed to GitHub!
+[main 3f5334c] Auto-update: 2026-11-16 07:40:01
+ 1 file changed, 32 insertions(+), 2 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   601772b..3f5334c  main -> main
+Changes pushed to GitHub!
+No changes to push.
+No changes to push.
+[main 0a1cc5e] Auto-update: 2026-11-16 07:55:01
+ 3 files changed, 133 insertions(+), 1 deletion(-)
+ create mode 100644 tests/test_preferences.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   3f5334c..0a1cc5e  main -> main
+Changes pushed to GitHub!
+[main 13feb8c] Auto-update: 2026-11-16 08:00:01
+ 6 files changed, 749 insertions(+), 3 deletions(-)
+ create mode 100644 modules/approval.py
+ create mode 100644 tests/test_approval.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   0a1cc5e..13feb8c  main -> main
+Changes pushed to GitHub!
+[main 0b4242c] Auto-update: 2026-11-16 08:05:01
+ 2 files changed, 485 insertions(+)
+ create mode 100644 modules/budget.py
+ create mode 100644 tests/test_budget.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   13feb8c..0b4242c  main -> main
+Changes pushed to GitHub!
+[main f556e25] Auto-update: 2026-11-16 08:10:02
+ 9 files changed, 389 insertions(+), 2 deletions(-)
+ create mode 100644 modules/diagnostics.py
+ create mode 100644 modules/goals.py
+ create mode 100644 tests/test_diagnostics.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   0b4242c..f556e25  main -> main
+Changes pushed to GitHub!
+[main 73d77e8] Auto-update: 2026-11-16 08:15:02
+ 7 files changed, 1427 insertions(+), 4 deletions(-)
+ create mode 100644 modules/planner.py
+ create mode 100644 modules/reflections.py
+ create mode 100644 tests/test_planner.py
+ create mode 100644 tests/test_reflections.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   f556e25..73d77e8  main -> main
+Changes pushed to GitHub!
+[main b5ebbfd] Auto-update: 2026-11-16 08:20:01
+ 10 files changed, 683 insertions(+), 3 deletions(-)
+ create mode 100644 modules/_test_dynamic_tools.py
+ create mode 100644 modules/tool_synthesis.py
+ create mode 100644 tests/test_tool_synthesis.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   73d77e8..b5ebbfd  main -> main
+Changes pushed to GitHub!
+fatal: sha1 file '/home/millennium/jarvis_project/.git/index.lock' write error. Out of diskspace
+No changes to push.
+[main f8491a9] Auto-update: 2026-11-16 08:30:01
+ 20 files changed, 190 insertions(+), 584 deletions(-)
+ create mode 100644 data/_test_dynamic_tools.py
+ create mode 100644 data/test_synthesized_compute_fibonacci.py
+ create mode 100644 experiments/brand_testing_20261116-082055/README.md
+ create mode 100644 tests/_test_dummy_module.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   b5ebbfd..f8491a9  main -> main
+Changes pushed to GitHub!
+[main daec76c] Auto-update: 2026-11-16 08:35:01
+ 16 files changed, 102 insertions(+), 5 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-083352/README.md
+ delete mode 100644 tests/_test_dummy_module.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   f8491a9..daec76c  main -> main
+Changes pushed to GitHub!
+[main 79dc82a] Auto-update: 2026-11-16 08:40:01
+ 1 file changed, 2 insertions(+)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   daec76c..79dc82a  main -> main
+Changes pushed to GitHub!
+[main 2a78718] Auto-update: 2026-11-16 08:45:01
+ 12 files changed, 282 insertions(+), 221 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   79dc82a..2a78718  main -> main
+Changes pushed to GitHub!
+[main c12b01b] Auto-update: 2026-11-16 08:50:01
+ 9 files changed, 61 insertions(+), 45 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   2a78718..c12b01b  main -> main
+Changes pushed to GitHub!
+[main 8809965] Auto-update: 2026-11-16 08:55:01
+ 10 files changed, 23 insertions(+), 2 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-085438/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   c12b01b..8809965  main -> main
+Changes pushed to GitHub!
+[main 26e5eba] Auto-update: 2026-11-16 09:00:01
+ 1 file changed, 1 insertion(+)
+ create mode 100644 logs/cycle_log.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   8809965..26e5eba  main -> main
+Changes pushed to GitHub!
+[main 78f2d0c] Auto-update: 2026-11-16 09:05:01
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Created autostash: 405330a
+Current branch main is up to date.
+Applied autostash.
+[main 64a8082] Auto-update: 2026-11-16 09:10:01
+ 1 file changed, 2 insertions(+)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   26e5eba..64a8082  main -> main
+Changes pushed to GitHub!
+[main 3e78d7e] Auto-update: 2026-11-16 09:15:01
+ 3 files changed, 88 insertions(+), 1 deletion(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   64a8082..3e78d7e  main -> main
+Changes pushed to GitHub!
+No changes to push.
+fatal: unable to access 'https://github.com/Codezdude/jarvis-ai-linux.git/': Recv failure: Network is unreachable
+Changes pushed to GitHub!
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+[main e8d8527] Auto-update: 2026-11-16 14:35:01
+ 1 file changed, 19 insertions(+), 14 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   3e78d7e..e8d8527  main -> main
+Changes pushed to GitHub!
+[main 16cd394] Auto-update: 2026-11-16 14:40:01
+ 1 file changed, 48 insertions(+)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   e8d8527..16cd394  main -> main
+Changes pushed to GitHub!
+[main f8f674b] Auto-update: 2026-11-16 14:45:02
+ 3 files changed, 38 insertions(+), 2 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   16cd394..f8f674b  main -> main
+Changes pushed to GitHub!
+[main aa444b0] Auto-update: 2026-11-16 14:50:01
+ 4 files changed, 123 insertions(+), 2 deletions(-)
+ create mode 100644 tests/test_goals_and_worker.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   f8f674b..aa444b0  main -> main
+Changes pushed to GitHub!
+[main 4617bea] Auto-update: 2026-11-16 14:55:01
+ 4 files changed, 12 insertions(+), 1 deletion(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   aa444b0..4617bea  main -> main
+Changes pushed to GitHub!
+[main c7678d4] Auto-update: 2026-11-16 15:00:01
+ 10 files changed, 177 insertions(+), 28 deletions(-)
+ create mode 100644 tests/test_force_provider.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   4617bea..c7678d4  main -> main
+Changes pushed to GitHub!
+[main 6cf0a5f] Auto-update: 2026-11-16 15:05:01
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   c7678d4..6cf0a5f  main -> main
+Changes pushed to GitHub!
+[main 32949b7] Auto-update: 2026-11-16 15:10:01
+ 3 files changed, 82 insertions(+), 8 deletions(-)
+ create mode 100644 tests/test_partial_tool_name.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   6cf0a5f..32949b7  main -> main
+Changes pushed to GitHub!
+[main 015a5b7] Auto-update: 2026-11-16 15:15:02
+ 3 files changed, 241 insertions(+), 17 deletions(-)
+ create mode 100644 tests/test_xml_tool_calls.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   32949b7..015a5b7  main -> main
+Changes pushed to GitHub!
+[main 8d5d3fc] Auto-update: 2026-11-16 15:20:01
+ 2 files changed, 14 insertions(+), 14 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   015a5b7..8d5d3fc  main -> main
+Changes pushed to GitHub!
+[main e9f8b17] Auto-update: 2026-11-16 15:25:01
+ 4 files changed, 25 insertions(+), 22 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   8d5d3fc..e9f8b17  main -> main
+Changes pushed to GitHub!
+No changes to push.
+fatal: unable to write loose object file: No space left on device
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   memory/jarvis_memory.db
+	modified:   memory/jarvis_semantic_cache.db
+	modified:   memory/jarvis_vector_memory.db
+	modified:   memory/session_history.json
+
+no changes added to commit (use "git add" and/or "git commit -a")
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+There is no candidate for rebasing against among the refs that you just fetched.
+Generally this means that you provided a wildcard refspec which had no
+matches on the remote end.
+fatal: write error: No space left on device
+Everything up-to-date
+Changes pushed to GitHub!
+[main 003aabc] Auto-update: 2026-11-16 15:40:01
+ 4 files changed, 23 insertions(+), 24 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   e9f8b17..003aabc  main -> main
+Changes pushed to GitHub!
+[main c633561] Auto-update: 2026-11-16 15:45:01
+ 6 files changed, 72 insertions(+), 26 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   003aabc..c633561  main -> main
+Changes pushed to GitHub!
+[main 1a9ec80] Auto-update: 2026-11-16 15:50:01
+ 7 files changed, 196 insertions(+), 30 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   c633561..1a9ec80  main -> main
+Changes pushed to GitHub!
+[main 1f1b13d] Auto-update: 2026-11-16 15:55:01
+ 6 files changed, 235 insertions(+), 28 deletions(-)
+ create mode 100644 tests/test_ai_fixes.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   1a9ec80..1f1b13d  main -> main
+Changes pushed to GitHub!
+[main d50be20] Auto-update: 2026-11-16 16:00:01
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   1f1b13d..d50be20  main -> main
+Changes pushed to GitHub!
+[main 9e8167b] Auto-update: 2026-11-16 16:05:01
+ 4 files changed, 27 insertions(+), 23 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   d50be20..9e8167b  main -> main
+Changes pushed to GitHub!
+[main ccf3903] Auto-update: 2026-11-16 16:10:01
+ 5 files changed, 34 insertions(+), 37 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   9e8167b..ccf3903  main -> main
+Changes pushed to GitHub!
+No changes to push.
+[main 3f87053] Auto-update: 2026-11-16 16:20:01
+ 9 files changed, 915 insertions(+), 18 deletions(-)
+ create mode 100644 modules/memory_consolidation.py
+ create mode 100644 modules/triggers.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   ccf3903..3f87053  main -> main
+Changes pushed to GitHub!
+[main 895423e] Auto-update: 2026-11-16 16:25:02
+ 18 files changed, 424 insertions(+), 6 deletions(-)
+ create mode 100644 data/mcp_servers.json
+ create mode 100644 data/trigger_state.json
+ create mode 100644 experiments/brand_testing_20261116-162258/README.md
+ create mode 100644 experiments/brand_testing_20261116-162312/README.md
+ create mode 100644 experiments/brand_testing_20261116-162327/README.md
+ create mode 100644 modules/mcp_bridge.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   3f87053..895423e  main -> main
+Changes pushed to GitHub!
+[main 687822e] Auto-update: 2026-11-16 16:30:02
+ 10 files changed, 47 insertions(+), 21 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-162734/README.md
+ create mode 100644 experiments/brand_testing_20261116-162805/README.md
+ create mode 100644 experiments/brand_testing_20261116-163001/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   895423e..687822e  main -> main
+Changes pushed to GitHub!
+[main 008645f] Auto-update: 2026-11-16 16:35:01
+ 3 files changed, 148 insertions(+), 28 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   687822e..008645f  main -> main
+Changes pushed to GitHub!
+No changes to push.
+[main 8561878] Auto-update: 2026-11-16 16:45:01
+ 2 files changed, 46 insertions(+)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   008645f..8561878  main -> main
+Changes pushed to GitHub!
+No changes to push.
+[main 7b70cae] Auto-update: 2026-11-16 16:55:01
+ 2 files changed, 216 insertions(+), 1 deletion(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   8561878..7b70cae  main -> main
+Changes pushed to GitHub!
+[main 8573704] Auto-update: 2026-11-16 17:00:02
+ 2 files changed, 116 insertions(+)
+ create mode 100644 tests/test_settings_modal.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   7b70cae..8573704  main -> main
+Changes pushed to GitHub!
+[main f98868e] Auto-update: 2026-11-16 17:05:01
+ 2 files changed, 126 insertions(+), 3 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   8573704..f98868e  main -> main
+Changes pushed to GitHub!
+[main efeb856] Auto-update: 2026-11-16 17:10:01
+ 4 files changed, 161 insertions(+), 9 deletions(-)
+ create mode 100644 tests/_dynamic_probe.py
+ create mode 100644 tests/test_dynamic_isolation.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   f98868e..efeb856  main -> main
+Changes pushed to GitHub!
+[main cfe1625] Auto-update: 2026-11-16 17:15:01
+ 14 files changed, 172 insertions(+), 43 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-171431/README.md
+ create mode 100644 tests/test_hybrid_memory.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   efeb856..cfe1625  main -> main
+Changes pushed to GitHub!
+[main cbcdf70] Auto-update: 2026-11-16 17:20:01
+ 1 file changed, 22 insertions(+)
+ create mode 100644 deploy/jarvis.service
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   cfe1625..cbcdf70  main -> main
+Changes pushed to GitHub!
+[main eb6942b] Auto-update: 2026-11-16 17:25:01
+ 1 file changed, 22 insertions(+), 22 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   cbcdf70..eb6942b  main -> main
+Changes pushed to GitHub!
+[main 1bc48a5] Auto-update: 2026-11-16 17:30:02
+ 3 files changed, 136 insertions(+), 26 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   eb6942b..1bc48a5  main -> main
+Changes pushed to GitHub!
+[main 542f8b2] Auto-update: 2026-11-16 17:35:02
+ 5 files changed, 142 insertions(+), 26 deletions(-)
+ create mode 100644 tests/test_ui_chat_edit.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   1bc48a5..542f8b2  main -> main
+Changes pushed to GitHub!
+[main a52f7e1] Auto-update: 2026-11-16 17:40:01
+ 2 files changed, 49 insertions(+), 4 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   542f8b2..a52f7e1  main -> main
+Changes pushed to GitHub!
+[main 434f440] Auto-update: 2026-11-16 17:45:01
+ 3 files changed, 131 insertions(+), 5 deletions(-)
+ create mode 100644 tests/test_context_budget.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   a52f7e1..434f440  main -> main
+Changes pushed to GitHub!
+[main 048c2ef] Auto-update: 2026-11-16 17:50:01
+ 3 files changed, 128 insertions(+), 1 deletion(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   434f440..048c2ef  main -> main
+Changes pushed to GitHub!
+[main 77cf964] Auto-update: 2026-11-16 17:55:01
+ 11 files changed, 145 insertions(+), 5 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-175420/README.md
+ create mode 100644 tests/test_mcp_bridge.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   048c2ef..77cf964  main -> main
+Changes pushed to GitHub!
+[main 5f3486f] Auto-update: 2026-11-16 18:00:01
+ 13 files changed, 228 insertions(+), 36 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-175950/README.md
+ create mode 100644 tests/test_proactive_triggers.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Created autostash: 67cfe6a
+Current branch main is up to date.
+Applied autostash.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   77cf964..5f3486f  main -> main
+Changes pushed to GitHub!
+No changes to push.
+[main 509adb5] Auto-update: 2026-11-16 18:10:01
+ 2 files changed, 322 insertions(+)
+ create mode 100644 modules/update_watcher.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   5f3486f..509adb5  main -> main
+Changes pushed to GitHub!
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+No changes to push.
+[main bfba751] Auto-update: 2026-11-16 18:55:01
+ 13 files changed, 60 insertions(+), 28 deletions(-)
+ create mode 100644 data/ig_media/ig_1794851665711.png
+ create mode 100644 experiments/brand_testing_20261116-185122/README.md
+ create mode 100644 experiments/brand_testing_20261116-185438/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   509adb5..bfba751  main -> main
+Changes pushed to GitHub!
+[main 5aa48d8] Auto-update: 2026-11-16 19:00:02
+ 6 files changed, 40 insertions(+), 26 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   bfba751..5aa48d8  main -> main
+Changes pushed to GitHub!
+[main 40162c2] Auto-update: 2026-11-16 19:05:01
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   5aa48d8..40162c2  main -> main
+Changes pushed to GitHub!
+No changes to push.
+[main c1fa976] Auto-update: 2026-11-16 19:15:02
+ 3 files changed, 8 insertions(+), 17 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   40162c2..c1fa976  main -> main
+Changes pushed to GitHub!
+No changes to push.
+No changes to push.
+[main 86589e8] Auto-update: 2026-11-16 19:30:01
+ 5 files changed, 25 insertions(+), 8 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   c1fa976..86589e8  main -> main
+Changes pushed to GitHub!
+[main 281019b] Auto-update: 2026-11-16 19:35:01
+ 2 files changed, 7 insertions(+), 6 deletions(-)
+ create mode 100644 data/ig_media/ig_1794853871225.png
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   86589e8..281019b  main -> main
+Changes pushed to GitHub!
+[main 790a990] Auto-update: 2026-11-16 19:40:01
+ 1 file changed, 25 insertions(+), 5 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   281019b..790a990  main -> main
+Changes pushed to GitHub!
+[main ee4d1b6] Auto-update: 2026-11-16 19:45:01
+ 9 files changed, 27 insertions(+), 4 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-194148/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   790a990..ee4d1b6  main -> main
+Changes pushed to GitHub!
+[main e492744] Auto-update: 2026-11-16 19:50:01
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   ee4d1b6..e492744  main -> main
+Changes pushed to GitHub!
+[main f6993b5] Auto-update: 2026-11-16 19:55:01
+ 6 files changed, 102 insertions(+), 25 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Created autostash: efa90c7
+Current branch main is up to date.
+Applied autostash.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   e492744..f6993b5  main -> main
+Changes pushed to GitHub!
+[main 12b519a] Auto-update: 2026-11-16 20:00:02
+ 12 files changed, 135 insertions(+), 51 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-195523/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   f6993b5..12b519a  main -> main
+Changes pushed to GitHub!
+[main 10c48d0] Auto-update: 2026-11-16 20:05:02
+ 3 files changed, 20 insertions(+), 5 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   12b519a..10c48d0  main -> main
+Changes pushed to GitHub!
+[main 69e9ca2] Auto-update: 2026-11-16 20:10:01
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   10c48d0..69e9ca2  main -> main
+Changes pushed to GitHub!
+No changes to push.
+No changes to push.
+[main a657b51] Auto-update: 2026-11-16 20:25:02
+ 11 files changed, 72 insertions(+), 3 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-202025/README.md
+ create mode 100644 experiments/brand_testing_20261116-202035/README.md
+ create mode 100644 experiments/brand_testing_20261116-202125/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   69e9ca2..a657b51  main -> main
+Changes pushed to GitHub!
+[main d546483] Auto-update: 2026-11-16 20:30:02
+ 11 files changed, 61 insertions(+), 33 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-202536/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   a657b51..d546483  main -> main
+Changes pushed to GitHub!
+[main 307b97a] Auto-update: 2026-11-16 20:40:01
+ 2 files changed, 0 insertions(+), 0 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   d546483..307b97a  main -> main
+Changes pushed to GitHub!
+No changes to push.
+No changes to push.
+No changes to push.
+[main 29d365d] Auto-update: 2026-11-16 21:00:02
+ 8 files changed, 28 insertions(+), 19 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-205956/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Created autostash: 1bd1717
+Current branch main is up to date.
+Applied autostash.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   307b97a..29d365d  main -> main
+Changes pushed to GitHub!
+[main 53bea4d] Auto-update: 2026-11-16 21:05:01
+ 11 files changed, 66 insertions(+), 28 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-210226/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   29d365d..53bea4d  main -> main
+Changes pushed to GitHub!
+[main d1ac8db] Auto-update: 2026-11-16 21:10:01
+ 4 files changed, 211 insertions(+), 54 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   53bea4d..d1ac8db  main -> main
+Changes pushed to GitHub!
+[main 7381740] Auto-update: 2026-11-16 21:15:01
+ 4 files changed, 78 insertions(+), 8 deletions(-)
+ create mode 100644 tests/test_image_generator.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Created autostash: cf631bc
+Current branch main is up to date.
+Applied autostash.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   d1ac8db..7381740  main -> main
+Changes pushed to GitHub!
+[main 245f59c] Auto-update: 2026-11-16 21:20:00
+ 12 files changed, 61 insertions(+), 28 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-211508/README.md
+ create mode 100644 experiments/brand_testing_20261116-211742/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   7381740..245f59c  main -> main
+Changes pushed to GitHub!
+[main 735cfc1] Auto-update: 2026-11-16 21:25:01
+ 12 files changed, 89 insertions(+), 20 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-212339/README.md
+ create mode 100644 experiments/brand_testing_20261116-212346/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   245f59c..735cfc1  main -> main
+Changes pushed to GitHub!
+[main d5419e2] Auto-update: 2026-11-16 21:30:01
+ 3 files changed, 85 insertions(+), 25 deletions(-)
+ create mode 100644 data/ig_media/ig_acid_actually.png
+ create mode 100644 data/ig_media/make_acid_card.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   735cfc1..d5419e2  main -> main
+Changes pushed to GitHub!
+[main 6cd0e10] Auto-update: 2026-11-16 21:35:01
+ 9 files changed, 69 insertions(+), 28 deletions(-)
+ create mode 100644 data/ig_media/_publish_acid.py
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   d5419e2..6cd0e10  main -> main
+Changes pushed to GitHub!
+[main 50e7644] Auto-update: 2026-11-16 21:40:01
+ 13 files changed, 171 insertions(+), 52 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-213848/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   6cd0e10..50e7644  main -> main
+Changes pushed to GitHub!
+[main cedf57e] Auto-update: 2026-11-16 21:45:02
+ 12 files changed, 75 insertions(+), 32 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-214424/README.md
+fatal: unable to access 'https://github.com/Codezdude/jarvis-ai-linux.git/': Could not resolve host: github.com
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   50e7644..cedf57e  main -> main
+Changes pushed to GitHub!
+[main 122f56d] Auto-update: 2026-11-16 21:50:02
+ 13 files changed, 63 insertions(+), 32 deletions(-)
+ create mode 100644 experiments/brand_testing_20261116-214742/README.md
+ create mode 100644 experiments/brand_testing_20261116-214941/README.md
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   cedf57e..122f56d  main -> main
+Changes pushed to GitHub!
+[main 7021df4] Auto-update: 2026-11-16 21:55:01
+ 2 files changed, 51 insertions(+)
+ create mode 100644 data/.approval_hmac_key
+fatal: unable to access 'https://github.com/Codezdude/jarvis-ai-linux.git/': Could not resolve host: github.com
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   122f56d..7021df4  main -> main
+Changes pushed to GitHub!
+No changes to push.
+[main 66c64d6] Auto-update: 2026-11-16 22:05:01
+ 1 file changed, 76 insertions(+), 3 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   7021df4..66c64d6  main -> main
+Changes pushed to GitHub!
+[main e86058d] Auto-update: 2026-11-16 22:15:02
+ 8 files changed, 61 insertions(+), 4 deletions(-)
+From https://github.com/Codezdude/jarvis-ai-linux
+ * branch            main       -> FETCH_HEAD
+Current branch main is up to date.
+To https://github.com/Codezdude/jarvis-ai-linux.git
+   66c64d6..e86058d  main -> main
+Changes pushed to GitHub!

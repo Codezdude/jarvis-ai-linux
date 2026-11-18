@@ -348,11 +348,11 @@ def run_terminal_command(command: str) -> str:
   try:
     log_info(f"Executing shell command: {command}")
     result = subprocess.run(
-        command, shell=True, capture_output=True, text=True, timeout=30,
+        command, shell=True, capture_output=True, text=True, timeout=60,
         cwd=PROJECT_ROOT,
     )
     output = result.stdout if result.stdout else result.stderr
-    return f"Command executed. Output: {output[:800]}"
+    return f"Command executed. Output: {output[:1200]}"
   except Exception as e:
     log_error(f"Failed to execute command: {e}")
     return f"Failed to execute command: {str(e)}"

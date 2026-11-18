@@ -11,10 +11,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Authenticate and Upload to Google Drive
-        uses: satackey/action-google-drive@v2
+      - name: Push to Google Drive
+        uses: Jahnossi/google-drive-upload-action@v1.4.1
         with:
-          kadet-key: ${{ secrets.GOOGLE_CREDENTIALS }}
+          credentials: ${{ secrets.GOOGLE_CREDENTIALS }}
           folder-id: ${{ secrets.GDRIVE_FOLDER_ID }}
-          files: |
-            ./**
+          local-path: ./
+          exclude: ".git/"

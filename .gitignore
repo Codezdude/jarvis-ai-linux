@@ -1,19 +1,4 @@
+.canva_session/
+node_modules/
 venv/
-__pycache__/
-*.pyc
 .env
-*.gguf
-*.bin
-*.tar.zst
-git_sync.log
-.env
-*.db
-*.log
-.backups/
-__pycache__/
-
-logs/
-.backups/
-
-# runtime chat state
-memory/session_history.json

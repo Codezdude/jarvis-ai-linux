@@ -11,10 +11,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Create Zip Archive
+        run: |
+          zip -r jarvis_project_backup.zip . -x ".git/*" ".github/*"
+
       - name: Upload to Google Drive
         uses: Jumbo810/Upload_Github_Artifacts_TO_GDrive@v2.3.5
         with:
-          target: "./*"
+          target: "./jarvis_project_backup.zip"
           credentials: ${{ secrets.GOOGLE_CREDENTIALS }}
           parent_folder_id: ${{ secrets.GDRIVE_FOLDER_ID }}
           override: true
